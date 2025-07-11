@@ -48,8 +48,8 @@ export async function apiDelete(endpoint, token) {
 }
 
 // Auth helpers
-export async function login(email, password) {
-  return apiPost('/api/login', { email, password });
+export async function login(email, password, role) {
+  return apiPost('/api/login', { email, password, role });
 }
 
 export async function register(userData) {
