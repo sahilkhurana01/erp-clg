@@ -10,6 +10,8 @@ const subjectRoutes = require('./routes/subjectRoutes');
 const attendanceRoutes = require('./routes/attendanceRoutes');
 const resultRoutes = require('./routes/resultRoutes');
 const announcementRoutes = require('./routes/announcementRoutes');
+const authRoutes = require('./routes/authRoutes');
+const roleAuth = require('./middleware/roleAuth');
 
 const app = express();
 
@@ -19,13 +21,14 @@ app.use(cors({
 }));
 app.use(express.json());
 
-app.use('/api/students', studentRoutes);
-app.use('/api/teachers', teacherRoutes);
-app.use('/api/classes', classRoutes);
-app.use('/api/subjects', subjectRoutes);
-app.use('/api/attendance', attendanceRoutes);
-app.use('/api/results', resultRoutes);
-app.use('/api/announcements', announcementRoutes);
+app.use('/api/students', roleAuth('admin'), studentRoutes);
+app.use('/api/teachers', roleAuth('admin'), teacherRoutes);
+app.use('/api/classes', roleAuth('admin'), classRoutes);
+app.use('/api/subjects', roleAuth('admin'), subjectRoutes);
+app.use('/api/attendance', roleAuth('teacher'), attendanceRoutes);
+app.use('/api/results', roleAuth('teacher'), resultRoutes);
+app.use('/api/announcements', roleAuth('admin'), announcementRoutes);
+app.use('/api/auth', authRoutes);
 
 app.get('/', (req, res) => {
   res.send('ERP Backend API Running');
