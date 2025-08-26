@@ -8,7 +8,7 @@ function roleAuth(requiredRole) {
     }
     const token = authHeader.split(' ')[1];
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
       if (decoded.role !== requiredRole) {
         return res.status(403).json({ success: false, message: 'Forbidden: Incorrect role' });
       }

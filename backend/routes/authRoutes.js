@@ -28,6 +28,10 @@ function sendStyledEmail(to, subject, html) {
     to,
     subject,
     html,
+  }).catch(error => {
+    // Log the error but don't crash the server
+    console.log('📧 Email sending failed (but continuing):', { to, subject, error: error.message });
+    return Promise.resolve(); // Return resolved promise to continue execution
   });
 }
 
@@ -77,8 +81,9 @@ router.post('/register', async (req, res) => {
       } 
     });
 
-    // Send welcome email
-    await sendStyledEmail(
+    // Send welcome email (fire-and-forget)
+    setImmediate(() => {
+      sendStyledEmail(
       email, 
       'Welcome to ERP System', 
       `<div style='font-family:sans-serif'>
@@ -86,7 +91,8 @@ router.post('/register', async (req, res) => {
         <p>Thank you for registering as a <b>${role}</b>.</p>
         <p>You can now login to your account.</p>
       </div>`
-    );
+      );
+    });
 
     res.status(201).json({ 
       success: true, 
@@ -167,15 +173,17 @@ router.post('/login', async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    // Send login notification
-    await sendStyledEmail(
+    // Send login notification (fire-and-forget)
+    setImmediate(() => {
+      sendStyledEmail(
       email, 
       'Login Notification', 
       `<div style='font-family:sans-serif'>
         <h2>Login Alert</h2>
         <p>You have logged in as <b>${role}</b> at ${new Date().toLocaleString()}.</p>
       </div>`
-    );
+      );
+    });
 
     res.json({ 
       success: true, 
@@ -278,8 +286,9 @@ router.post('/send-reset-otp', async (req, res) => {
       } 
     });
 
-    // Send OTP email
-    await sendStyledEmail(
+    // Send OTP email (fire-and-forget)
+    setImmediate(() => {
+      sendStyledEmail(
       email, 
       'Password Reset OTP', 
       `<div style='font-family:sans-serif'>
@@ -288,7 +297,8 @@ router.post('/send-reset-otp', async (req, res) => {
         <p>It is valid for 15 minutes.</p>
         <p>If you didn't request this, please ignore this email.</p>
       </div>`
-    );
+      );
+    });
 
     res.json({ 
       success: true, 
@@ -347,8 +357,9 @@ router.post('/reset-password', async (req, res) => {
       } 
     });
 
-    // Send confirmation email
-    await sendStyledEmail(
+    // Send confirmation email (fire-and-forget)
+    setImmediate(() => {
+      sendStyledEmail(
       email, 
       'Password Reset Successful', 
       `<div style='font-family:sans-serif'>
@@ -356,7 +367,8 @@ router.post('/reset-password', async (req, res) => {
         <p>Your password has been reset successfully.</p>
         <p>You can now login with your new password.</p>
       </div>`
-    );
+      );
+    });
 
     res.json({ 
       success: true, 

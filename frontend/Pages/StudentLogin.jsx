@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { GraduationCap, Eye, EyeOff, Mail, Lock, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import useAuthStore from '../store/authStore';
+import toast from 'react-hot-toast';
 
 const StudentLogin = () => {
     const [step, setStep] = useState(0); // 0: login, 1: email input, 2: otp, 3: new password
@@ -10,11 +13,56 @@ const StudentLogin = () => {
     const [otp, setOtp] = useState('');
     const [newPassword, setNewPassword] = useState('');
 
+    const navigate = useNavigate();
+    const { login, isAuthenticated, user, error, clearError } = useAuthStore();
+
+    useEffect(() => {
+        // Only redirect if we're authenticated and have user data
+        if (isAuthenticated && user && user.role === 'student') {
+            console.log('User authenticated, redirecting to dashboard');
+            navigate('/student/dashboard');
+        }
+    }, [isAuthenticated, user, navigate]);
+
+    useEffect(() => {
+        if (error) {
+            toast.error(error);
+            clearError();
+        }
+    }, [error, clearError]);
+
     const handleSubmit = async () => {
+        if (!email || !password) {
+            toast.error('Please fill in all fields');
+            return;
+        }
+
         setIsLoading(true);
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        console.log('Student Login:', { email, password });
-        setIsLoading(false);
+        try {
+            console.log('Attempting login with:', { email, password, role: 'student' });
+            const result = await login(email, password, 'student');
+            console.log('Login result:', result);
+            
+            if (result.success) {
+                toast.success('Login successful!');
+                console.log('Login successful, navigating to dashboard');
+                navigate('/student/dashboard');
+            } else {
+                console.log('Login failed:', result.message);
+                toast.error(result.message || 'Login failed');
+            }
+        } catch (error) {
+            console.error('Login error:', error);
+            if (error.message && error.message.includes('timeout')) {
+                toast.error('Connection timeout. Please check your internet connection and try again.');
+            } else if (error.message) {
+                toast.error(error.message);
+            } else {
+                toast.error('An error occurred during login. Please try again.');
+            }
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleSendOTP = () => {
@@ -199,6 +247,17 @@ const StudentLogin = () => {
                         </button>
                     </div>
                 )}
+
+                {/* Back to Role Selection */}
+                <div className="text-center mt-4">
+                    <button
+                        type="button"
+                        onClick={() => navigate('/')}
+                        className="text-sm text-slate-600 hover:text-slate-800 font-medium transition-colors"
+                    >
+                        ← Back to Role Selection
+                    </button>
+                </div>
 
                 {/* Footer */}
                 <div className="text-center mt-6 md:mt-8 text-slate-400 text-xs md:text-sm">

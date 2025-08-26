@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const resultController = require('../controllers/resultController');
-const { authenticateJWT } = require('../middleware/userAuth');
+const { authenticateToken, requireTeacherOrAdmin } = require('../middleware/auth');
 
-router.get('/', authenticateJWT, resultController.getAllResults);
-router.get('/:id', authenticateJWT, resultController.getResultById);
-router.post('/', authenticateJWT, resultController.createResult);
-router.put('/:id', authenticateJWT, resultController.updateResult);
-router.delete('/:id', authenticateJWT, resultController.deleteResult);
+router.get('/class/:classId', authenticateToken, requireTeacherOrAdmin, resultController.getClassResults);
+router.get('/student/:studentId', authenticateToken, requireTeacherOrAdmin, resultController.getStudentResults);
+router.post('/', authenticateToken, requireTeacherOrAdmin, resultController.createResult);
+router.put('/:id', authenticateToken, requireTeacherOrAdmin, resultController.updateResult);
+router.delete('/:id', authenticateToken, requireTeacherOrAdmin, resultController.deleteResult);
+router.post('/bulk', authenticateToken, requireTeacherOrAdmin, resultController.bulkCreateResults);
 
 module.exports = router;

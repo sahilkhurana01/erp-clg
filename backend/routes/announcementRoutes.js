@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const announcementController = require('../controllers/announcementController');
-const { authenticateJWT } = require('../middleware/userAuth');
+const { authenticateToken, requireAdmin } = require('../middleware/auth');
 
-router.get('/', authenticateJWT, announcementController.getAllAnnouncements);
-router.get('/:id', authenticateJWT, announcementController.getAnnouncementById);
-router.post('/', authenticateJWT, announcementController.createAnnouncement);
-router.put('/:id', authenticateJWT, announcementController.updateAnnouncement);
-router.delete('/:id', authenticateJWT, announcementController.deleteAnnouncement);
+router.get('/', authenticateToken, requireAdmin, announcementController.getAllAnnouncements);
+router.get('/:id', authenticateToken, requireAdmin, announcementController.getAnnouncementById);
+router.post('/', authenticateToken, requireAdmin, announcementController.createAnnouncement);
+router.put('/:id', authenticateToken, requireAdmin, announcementController.updateAnnouncement);
+router.delete('/:id', authenticateToken, requireAdmin, announcementController.deleteAnnouncement);
+router.patch('/:id/toggle', authenticateToken, requireAdmin, announcementController.toggleAnnouncementStatus);
 
 module.exports = router;

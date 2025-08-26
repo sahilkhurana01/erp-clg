@@ -1,12 +1,18 @@
 const express = require('express');
 const router = express.Router();
 const attendanceController = require('../controllers/attendanceController');
-const { authenticateJWT } = require('../middleware/userAuth');
+const { authenticateToken, requireTeacherOrAdmin } = require('../middleware/auth');
 
-router.get('/', authenticateJWT, attendanceController.getAllAttendance);
-router.get('/:id', authenticateJWT, attendanceController.getAttendanceById);
-router.post('/', authenticateJWT, attendanceController.createAttendance);
-router.put('/:id', authenticateJWT, attendanceController.updateAttendance);
-router.delete('/:id', authenticateJWT, attendanceController.deleteAttendance);
+// Get class attendance (with optional date parameter for current vs historical)
+router.get('/class/:classId', authenticateToken, requireTeacherOrAdmin, attendanceController.getClassAttendance);
+
+// Mark attendance for students
+router.post('/', authenticateToken, requireTeacherOrAdmin, attendanceController.markAttendance);
+
+// Update attendance record
+router.put('/:id', authenticateToken, requireTeacherOrAdmin, attendanceController.updateAttendance);
+
+// Get student attendance history
+router.get('/student/:studentId', authenticateToken, requireTeacherOrAdmin, attendanceController.getStudentAttendance);
 
 module.exports = router;

@@ -1,268 +1,186 @@
-import React, { useState } from "react";
-import {
-  Shield,
-  Eye,
-  EyeOff,
-  Mail,
-  Lock,
-  ArrowLeft,
-  KeyRound,
-} from "lucide-react";
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Eye, EyeOff, Lock, Mail, User } from 'lucide-react';
+import useAuthStore from '../store/authStore';
+import toast from 'react-hot-toast';
 
 const AdminLogin = () => {
-  const [step, setStep] = useState("login");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [otp, setOtp] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    role: 'admin'
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = async () => {
-    setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    console.log("Admin Login:", { email, password });
-    setIsLoading(false);
+  const navigate = useNavigate();
+  const { login, isAuthenticated, user, error, clearError } = useAuthStore();
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      if (user.role === 'admin') {
+        navigate('/admin/dashboard');
+      } else {
+        toast.error('Access denied. Admin role required.');
+        useAuthStore.getState().logout();
+      }
+    }
+  }, [isAuthenticated, user, navigate]);
+
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+      clearError();
+    }
+  }, [error, clearError]);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
-  const handleForgotFlow = async () => {
-    setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    setIsLoading(false);
-    setStep("forgotOTP");
-  };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!formData.email || !formData.password) {
+      toast.error('Please fill in all fields');
+      return;
+    }
 
-  const handleVerifyOtp = async () => {
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    setIsLoading(false);
-    setStep("forgotNewPassword");
-  };
-
-  const handleResetPassword = async () => {
-    setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    console.log("Password Reset to:", newPassword);
-    setIsLoading(false);
-    setStep("login");
-    setNewPassword("");
-    setConfirmPassword("");
-  };
-
-  const goBack = () => {
-    if (step === "forgotOTP") setStep("forgotEmail");
-    else if (step === "forgotNewPassword") setStep("forgotOTP");
-    else setStep("login");
+    try {
+      const result = await login(formData.email, formData.password, formData.role);
+      if (result.success) {
+        toast.success('Login successful!');
+        navigate('/admin/dashboard');
+      } else {
+        toast.error(result.message || 'Login failed');
+      }
+    } catch (error) {
+      toast.error('An error occurred during login');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="max-w-md w-full space-y-8">
         {/* Header */}
-        <div className="text-center mb-6 md:mb-8">
-          <div className="flex justify-center items-center mb-3 md:mb-4">
-            <div className="bg-white rounded-full p-3 md:p-4 shadow-md">
-              <Shield className="h-6 w-6 md:h-8 md:w-8 text-slate-600" />
-            </div>
+        <div className="text-center">
+          <div className="mx-auto h-16 w-16 bg-indigo-600 rounded-full flex items-center justify-center">
+            <User className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-2xl md:text-3xl font-light text-slate-800 mb-2">
-            {step === "login"
-              ? "Admin Login"
-              : step === "forgotEmail"
-                ? "Forgot Password"
-                : step === "forgotOTP"
-                  ? "Enter OTP"
-                  : "Reset Password"}
-          </h1>
-          <p className="text-sm md:text-base text-slate-600">
-            {step === "login"
-              ? "Enter your credentials to access the admin panel"
-              : step === "forgotEmail"
-                ? "Enter your registered email to receive OTP"
-                : step === "forgotOTP"
-                  ? "Check your email and enter the OTP"
-                  : "Set a new password for your account"}
+          <h2 className="mt-6 text-3xl font-bold text-gray-900">
+            Admin Login
+          </h2>
+          <p className="mt-2 text-sm text-gray-600">
+            Sign in to your admin account
           </p>
         </div>
 
-        {/* Card */}
-        <div className="bg-white rounded-2xl shadow-md p-6 md:p-8 space-y-5">
-          {(step === "login" || step === "forgotEmail") && (
+        {/* Login Form */}
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          <div className="space-y-4">
+            {/* Email Field */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                 Email Address
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Mail className="h-5 w-5 text-gray-400" />
+                </div>
                 <input
+                  id="email"
+                  name="email"
                   type="email"
-                  className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-400 focus:outline-none transition-all"
+                  autoComplete="email"
+                  required
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                   placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
             </div>
-          )}
 
-          {step === "login" && (
+            {/* Password Field */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
                 Password
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock className="h-5 w-5 text-gray-400" />
+                </div>
                 <input
-                  type={showPassword ? "text" : "password"}
-                  className="w-full pl-10 pr-12 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-400 focus:outline-none transition-all"
+                  id="password"
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  required
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  className="block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                   placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
                 />
                 <button
                   type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2"
                 >
                   {showPassword ? (
-                    <EyeOff className="h-5 w-5 text-slate-400" />
+                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
                   ) : (
-                    <Eye className="h-5 w-5 text-slate-400" />
+                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
                   )}
                 </button>
               </div>
             </div>
-          )}
+          </div>
 
-          {step === "forgotOTP" && (
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Enter OTP
-              </label>
-              <div className="relative">
-                <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
-                <input
-                  type="text"
-                  className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-400 focus:outline-none transition-all"
-                  placeholder="Enter OTP"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                />
-              </div>
-            </div>
-          )}
-
-          {step === "forgotNewPassword" && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  New Password
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
-                  <input
-                    type="password"
-                    className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-400 focus:outline-none transition-all"
-                    placeholder="Enter new password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Confirm Password
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
-                  <input
-                    type="password"
-                    className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-400 focus:outline-none transition-all"
-                    placeholder="Confirm password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                  />
-                </div>
-                {confirmPassword && newPassword !== confirmPassword && (
-                  <p className="text-red-500 text-xs mt-1">
-                    Passwords do not match.
-                  </p>
-                )}
-              </div>
-            </>
-          )}
-
-          {/* Continue Button */}
-          <button
-            onClick={() => {
-              if (step === "login") handleLogin();
-              else if (step === "forgotEmail") handleForgotFlow();
-              else if (step === "forgotOTP") handleVerifyOtp();
-              else handleResetPassword();
-            }}
-            disabled={
-              isLoading ||
-              (step === "login" && (!email || !password)) ||
-              (step === "forgotEmail" && !email) ||
-              (step === "forgotOTP" && !otp) ||
-              (step === "forgotNewPassword" &&
-                (!newPassword ||
-                  !confirmPassword ||
-                  newPassword !== confirmPassword))
-            }
-            className={`w-full py-3 rounded-xl font-medium transition-all duration-300 ${isLoading ||
-                (step === "login" && (!email || !password)) ||
-                (step === "forgotEmail" && !email) ||
-                (step === "forgotOTP" && !otp) ||
-                (step === "forgotNewPassword" &&
-                  (!newPassword ||
-                    !confirmPassword ||
-                    newPassword !== confirmPassword))
-                ? "bg-slate-200 text-slate-400 cursor-not-allowed"
-                : "bg-blue-500 text-white shadow-md hover:bg-blue-600 hover:shadow-lg transform hover:-translate-y-0.5"
-              }`}
-          >
-            {isLoading ? (
-              <div className="flex items-center justify-center">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                Please wait...
-              </div>
-            ) : step === "login" ? (
-              "Sign In"
-            ) : step === "forgotEmail" ? (
-              "Send OTP"
-            ) : step === "forgotOTP" ? (
-              "Verify OTP"
-            ) : (
-              "Reset Password"
-            )}
-          </button>
-
-          {/* Back Button */}
-          {step !== "login" && (
+          {/* Submit Button */}
+          <div>
             <button
-              onClick={goBack}
-              className="flex items-center gap-1 text-sm text-blue-500 hover:text-blue-600 transition-colors"
+              type="submit"
+              disabled={isLoading}
+              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </button>
-          )}
-        </div>
-
-        {/* Forgot Password Trigger */}
-        {step === "login" && (
-          <div className="text-center mt-6 md:mt-8 text-sm">
-            <button
-              onClick={() => setStep("forgotEmail")}
-              className="text-blue-500 hover:text-blue-600 transition-colors"
-            >
-              Forgot your password?
+              {isLoading ? (
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Signing in...
+                </div>
+              ) : (
+                'Sign In'
+              )}
             </button>
           </div>
-        )}
+
+          {/* Demo Credentials */}
+          <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+            <h3 className="text-sm font-medium text-blue-800 mb-2">Demo Credentials:</h3>
+            <p className="text-xs text-blue-700">
+              Email: admin@erp.com<br />
+              Password: admin123
+            </p>
+          </div>
+
+          {/* Back to Role Selection */}
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="text-sm text-indigo-600 hover:text-indigo-500 font-medium transition-colors"
+            >
+              ← Back to Role Selection
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

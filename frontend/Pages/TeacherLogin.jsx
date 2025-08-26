@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Eye, EyeOff, Mail, Lock, KeyRound } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import useAuthStore from '../store/authStore';
+import toast from 'react-hot-toast';
 
 const TeacherLogin = () => {
   const [view, setView] = useState('login'); // login | forgot-email | otp | reset
@@ -10,11 +13,50 @@ const TeacherLogin = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  const navigate = useNavigate();
+  const { login, isAuthenticated, user, error, clearError } = useAuthStore();
+
+  useEffect(() => {
+    // Only redirect if we're authenticated and have user data
+    if (isAuthenticated && user && user.role === 'teacher') {
+      console.log('User authenticated, redirecting to dashboard');
+      navigate('/teacher/dashboard');
+    }
+  }, [isAuthenticated, user, navigate]);
+
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+      clearError();
+    }
+  }, [error, clearError]);
+
   const handleLogin = async () => {
+    if (!email || !password) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    console.log('Login:', { email, password });
-    setIsLoading(false);
+    try {
+      const result = await login(email, password, 'teacher');
+      if (result.success) {
+        toast.success('Login successful!');
+        navigate('/teacher/dashboard');
+      } else {
+        toast.error(result.message || 'Login failed');
+      }
+    } catch (error) {
+      if (error.message && error.message.includes('timeout')) {
+        toast.error('Connection timeout. Please check your internet connection and try again.');
+      } else if (error.message) {
+        toast.error(error.message);
+      } else {
+        toast.error('An error occurred during login. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleEmailSubmit = () => {
@@ -206,6 +248,17 @@ const TeacherLogin = () => {
               </button>
             </>
           )}
+        </div>
+
+        {/* Back to Role Selection */}
+        <div className="text-center mt-4">
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="text-sm text-slate-600 hover:text-slate-800 font-medium transition-colors"
+          >
+            ← Back to Role Selection
+          </button>
         </div>
 
         {/* Footer */}

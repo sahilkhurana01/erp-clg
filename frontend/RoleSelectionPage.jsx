@@ -1,11 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Shield, GraduationCap, Building2 } from 'lucide-react';
+import useAuthStore from './store/authStore';
 
 const RoleSelectionPage = () => {
     const [selectedRole, setSelectedRole] = useState(null);
     const [isHovered, setIsHovered] = useState(null);
     const navigate = useNavigate();
+    const { isAuthenticated, user } = useAuthStore();
+
+    // Check if user is already authenticated and redirect to appropriate dashboard
+    useEffect(() => {
+        if (isAuthenticated && user) {
+            switch (user.role) {
+                case 'admin':
+                    navigate('/admin/dashboard');
+                    break;
+                case 'teacher':
+                    navigate('/teacher/dashboard');
+                    break;
+                case 'student':
+                    navigate('/student/dashboard');
+                    break;
+                default:
+                    break;
+            }
+        }
+    }, [isAuthenticated, user, navigate]);
 
     const roles = [
         {
