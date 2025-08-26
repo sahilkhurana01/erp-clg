@@ -1,9 +1,10 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const { connectMongo } = require('../db');
+const Subject = require('../models/Subject');
 
 exports.getAllSubjects = async (req, res) => {
   try {
-    const subjects = await prisma.subject.findMany();
+    await connectMongo();
+    const subjects = await Subject.find({}).sort({ createdAt: -1 });
     res.json(subjects);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -12,7 +13,8 @@ exports.getAllSubjects = async (req, res) => {
 
 exports.getSubjectById = async (req, res) => {
   try {
-    const subject = await prisma.subject.findUnique({ where: { id: Number(req.params.id) } });
+    await connectMongo();
+    const subject = await Subject.findById(req.params.id);
     if (!subject) return res.status(404).json({ error: 'Subject not found' });
     res.json(subject);
   } catch (err) {
@@ -22,7 +24,10 @@ exports.getSubjectById = async (req, res) => {
 
 exports.createSubject = async (req, res) => {
   try {
-    const subject = await prisma.subject.create({ data: req.body });
+    await connectMongo();
+    const { name, code, classId, teacherId } = req.body;
+    if (!name || !code) return res.status(400).json({ error: 'name and code are required' });
+    const subject = await Subject.create({ name, code, classId: classId || null, teacherId: teacherId || null });
     res.status(201).json(subject);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -31,7 +36,8 @@ exports.createSubject = async (req, res) => {
 
 exports.updateSubject = async (req, res) => {
   try {
-    const subject = await prisma.subject.update({ where: { id: Number(req.params.id) }, data: req.body });
+    await connectMongo();
+    const subject = await Subject.findByIdAndUpdate(req.params.id, req.body, { new: true });
     res.json(subject);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -40,7 +46,8 @@ exports.updateSubject = async (req, res) => {
 
 exports.deleteSubject = async (req, res) => {
   try {
-    await prisma.subject.delete({ where: { id: Number(req.params.id) } });
+    await connectMongo();
+    await Subject.deleteOne({ _id: req.params.id });
     res.json({ message: 'Subject deleted' });
   } catch (err) {
     res.status(400).json({ error: err.message });

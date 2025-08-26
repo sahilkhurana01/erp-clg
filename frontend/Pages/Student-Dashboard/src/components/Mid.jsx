@@ -2,31 +2,43 @@ import React, { useEffect, useState } from 'react';
 import { ArrowUpRight, Users, UserX, Clock } from 'lucide-react';
 
 const AttendanceCard = ({
-    date = 'Monday, 21 Jan 2023',
-    percentage = 85.2,
-    present = 24,
-    absent = 2,
-    punchedOut = 11
+    studentData,
+    results,
+    attendance
 }) => {
+    // Calculate real attendance statistics
+    const totalDays = attendance.length;
+    const presentDays = attendance.filter(a => a.status === 'present').length;
+    const absentDays = attendance.filter(a => a.status === 'absent').length;
+    const attendancePercentage = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
+    
+    // Get current date
+    const currentDate = new Date().toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        day: 'numeric', 
+        month: 'short', 
+        year: 'numeric' 
+    });
+
     const totalSegments = 18;
-    const targetFilledSegments = Math.round((percentage / 100) * totalSegments);
+    const targetFilledSegments = Math.round((attendancePercentage / 100) * totalSegments);
     const angleStep = 180 / (totalSegments - 1);
 
     const [filled, setFilled] = useState(0);
 
     // Determine center message
     let message = "It's already great!";
-    if (percentage < 50) {
+    if (attendancePercentage < 50) {
         message = "Need attention!";
-    } else if (percentage < 75) {
+    } else if (attendancePercentage < 75) {
         message = "Keep improving!";
     }
 
     // Determine color of filled bars
     let barColor = "bg-green-500";
-    if (percentage < 33) {
+    if (attendancePercentage < 33) {
         barColor = "bg-red-500";
-    } else if (percentage < 66) {
+    } else if (attendancePercentage < 66) {
         barColor = "bg-yellow-400";
     }
 
@@ -51,7 +63,7 @@ const AttendanceCard = ({
                             <div className="flex flex-col sm:flex-row sm:justify-between mb-9">
                                 <div>
                                     <h3 className="text-xl font-bold text-gray-800">Total Attendance</h3>
-                                    <p className="text-sm text-gray-500">{date}</p>
+                                    <p className="text-sm text-gray-500">{currentDate}</p>
                                 </div>
                                 <button className="flex items-center gap-1 text-blue-600 font-medium hover:text-blue-700 mt-2 sm:mt-0 text-sm">
                                     See All <ArrowUpRight className="w-4 h-4" />
@@ -79,7 +91,7 @@ const AttendanceCard = ({
 
                                 {/* Center Text */}
                                 <div className="absolute top-1/2 -translate-y-1/2 text-center">
-                                    <h2 className="text-2xl lg:text-3xl font-bold text-gray-800">{percentage}%</h2>
+                                    <h2 className="text-2xl lg:text-3xl font-bold text-gray-800">{attendancePercentage}%</h2>
                                     <p className="text-sm text-gray-500 mt-1">{message}</p>
                                 </div>
                             </div>
@@ -92,7 +104,7 @@ const AttendanceCard = ({
                                         <Users className="text-green-600 w-4 h-4" />
                                     </div>
                                     <p className="text-xs text-gray-700">Present</p>
-                                    <p className="text-green-600 font-bold text-lg">{present}</p>
+                                    <p className="text-green-600 font-bold text-lg">{presentDays}</p>
                                 </div>
 
                                 {/* Absent */}
@@ -101,16 +113,16 @@ const AttendanceCard = ({
                                         <UserX className="text-red-600 w-4 h-4" />
                                     </div>
                                     <p className="text-xs text-gray-700">Absent</p>
-                                    <p className="text-red-500 font-bold text-lg">{absent}</p>
+                                    <p className="text-red-500 font-bold text-lg">{absentDays}</p>
                                 </div>
 
-                                {/* Punched Out */}
+                                {/* Total Days */}
                                 <div className="text-center flex-1 h-20 bg-blue-50 p-3 rounded-xl border border-blue-100">
                                     <div className="flex justify-center mb-1">
                                         <Clock className="text-blue-600 w-4 h-4" />
                                     </div>
-                                    <p className="text-xs text-gray-700">Punched</p>
-                                    <p className="text-blue-600 font-bold text-lg">{punchedOut}</p>
+                                    <p className="text-xs text-gray-700">Total Days</p>
+                                    <p className="text-blue-600 font-bold text-lg">{totalDays}</p>
                                 </div>
                             </div>
                         </div>
@@ -124,16 +136,16 @@ const AttendanceCard = ({
                             <div className="space-y-2 text-sm">
                                 <div className="flex justify-between bg-gray-50 p-2 rounded-lg">
                                     <span className="text-gray-600">Attendance Rate</span>
-                                    <span className="font-semibold text-gray-800">{percentage}%</span>
+                                    <span className="font-semibold text-gray-800">{attendancePercentage}%</span>
                                 </div>
                                 <div className="flex justify-between bg-gray-50 p-2 rounded-lg">
                                     <span className="text-gray-600">Total Days</span>
-                                    <span className="font-semibold text-gray-800">{present + absent}</span>
+                                    <span className="font-semibold text-gray-800">{totalDays}</span>
                                 </div>
                                 <div className="flex justify-between bg-gray-50 p-2 rounded-lg">
                                     <span className="text-gray-600">Success Rate</span>
                                     <span className="font-semibold text-green-600">
-                                        {Math.round((present / (present + absent)) * 100)}%
+                                        {totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0}%
                                     </span>
                                 </div>
                             </div>
@@ -143,12 +155,12 @@ const AttendanceCard = ({
                         <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl shadow-xl p-4">
                             <h4 className="text-lg font-bold mb-2">Performance</h4>
                             <div className="text-xl font-bold mb-1">
-                                {percentage >= 90 ? 'Excellent' : percentage >= 75 ? 'Good' : 'Needs Improvement'}
+                                {attendancePercentage >= 90 ? 'Excellent' : attendancePercentage >= 75 ? 'Good' : 'Needs Improvement'}
                             </div>
                             <p className="text-blue-100 text-xs">
-                                {percentage >= 90
+                                {attendancePercentage >= 90
                                     ? 'Keep up the great work!'
-                                    : percentage >= 75
+                                    : attendancePercentage >= 75
                                         ? "You're doing well!"
                                         : "Let's improve together!"}
                             </p>

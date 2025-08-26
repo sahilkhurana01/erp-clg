@@ -217,6 +217,21 @@ export const announcementsAPI = {
     api.patch(`/api/announcements/${id}/toggle`)
 };
 
+// Timetable API
+export const timetableAPI = {
+  getClassTimetable: (classId) => 
+    api.get(`/api/timetable/class/${classId}`),
+  
+  createEntry: (timetableData) => 
+    api.post('/api/timetable', timetableData),
+  
+  updateEntry: (id, timetableData) => 
+    api.put(`/api/timetable/${id}`, timetableData),
+  
+  deleteEntry: (id) => 
+    api.delete(`/api/timetable/${id}`)
+};
+
 // Dashboard API
 export const dashboardAPI = {
   getStats: () => 

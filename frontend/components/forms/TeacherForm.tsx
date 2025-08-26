@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import InputField from "../InputField";
 import Image from "next/image";
+import { teachersAPI } from "../../api";
 
 const schema = z.object({
   username: z
@@ -42,8 +43,26 @@ const TeacherForm = ({
     resolver: zodResolver(schema),
   });
 
-  const onSubmit = handleSubmit((data) => {
-    console.log(data);
+  const onSubmit = handleSubmit(async (form) => {
+    const name = `${form.firstName} ${form.lastName}`.trim();
+    try {
+      await teachersAPI.create({
+        name,
+        email: form.email,
+        password: form.password,
+        employeeId: `T${Date.now()}`,
+        subject: 'General',
+        phone: form.phone,
+        address: form.address,
+        qualification: undefined,
+        experience: undefined,
+        salary: undefined,
+      } as any);
+      window.location.reload();
+    } catch (e) {
+      console.error('Create teacher failed', e);
+      alert((e as any)?.message || 'Failed to create teacher');
+    }
   });
 
   return (

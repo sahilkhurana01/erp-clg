@@ -1,7 +1,7 @@
 import { Bell } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 
-const Header = () => {
+const Header = ({ studentData }) => {
     return (
         <div className="flex items-center justify-between p-6 bg-gradient-to-br  rounded-2xl shadow-sm">
             {/* Left side - Profile and greeting */}
@@ -9,7 +9,7 @@ const Header = () => {
                 {/* Profile Picture */}
                 <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-white shadow-md">
                     <img
-                        src="https://imgs.search.brave.com/QS2Cxd8QDZoHsYyGVeicBs__DX2iIhjHW-1Hhz0mXP4/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly90aHVt/YnMuZHJlYW1zdGlt/ZS5jb20vYi9wcm9m/aWxlLXBpY3R1cmUt/eW91bmctbWFsZS1l/bXBsb3llZS1vZmZp/Y2UtcHJvZmlsZS1w/aWN0dXJlLXlvdW5n/LWNhdWNhc2lhbi1t/YWxlLWVtcGxveWVl/LXBvc2luZy1vZmZp/Y2UtaGVhZHNob3Qt/MTk4MDIyMzY5Lmpw/Zw"
+                        src="https://imgs.search.brave.com/QS2Cxd8QDZoHsYyGVeicBs__DX2iIhjHW-1Hhz0mXP4/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly90aHVt/YnMuZHJlYW1zdGlt/ZS5jb20vYi9wcm9m/aWxlLXBpY3R1cmUv/eW91bmctbWFsZS1l/bXBsb3llZS1vZmZp/Y2UtcHJvZmlsZS1w/aWN0dXJlLXlvdW5n/LWNhdWNhc2lhbi1t/YWxlLWVtcGxveWVl/LXBvc2luZy1vZmZp/Y2UtaGVhZHNob3Qt/MTk4MDIyMzY5Lmpw/Zw"
                         alt="Profile"
                         className="w-full h-full object-cover"
                     />
@@ -17,9 +17,15 @@ const Header = () => {
 
                 {/* Greeting Text */}
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800 mb-1">Hi, Vansh</h1>
-                    <p className="text-gray-600 text-sm">Find everything you need</p>
-                    <p className="text-gray-600 text-sm">all in one place.</p>
+                    <h1 className="text-2xl font-bold text-gray-800 mb-1">
+                        Hi, {studentData?.name || 'Student'}
+                    </h1>
+                    <p className="text-gray-600 text-sm">
+                        {studentData?.classId ? `Class: ${studentData.classId}` : 'Student'}
+                    </p>
+                    <p className="text-gray-600 text-sm">
+                        {studentData?.section ? `Section: ${studentData.section}` : 'Welcome back!'}
+                    </p>
                 </div>
             </div>
 

@@ -21,6 +21,7 @@ import {
     Sparkles
 } from "lucide-react";
 import BottomNav from "../components/BottomNav";
+import { studentsAPI, resultsAPI, subjectsAPI } from "../../../../api";
 
 
 const subjectsBySemester = {
@@ -241,14 +242,47 @@ const MarksReport = () => {
     const [selectedSemester, setSelectedSemester] = useState("Sem-3");
     const [selectedSubject, setSelectedSubject] = useState("Operating Systems");
     const [animatedScores, setAnimatedScores] = useState({});
+    
+    // Real data states
+    const [studentData, setStudentData] = useState(null);
+    const [resultsData, setResultsData] = useState([]);
+    const [subjectsData, setSubjectsData] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchStudentData = async () => {
+            try {
+                setLoading(true);
+                const user = JSON.parse(localStorage.getItem('user') || '{}');
+                if (user.id) {
+                    const student = await studentsAPI.getById(user.id);
+                    setStudentData(student);
+                    
+                    // Fetch results data
+                    const results = await resultsAPI.getByStudent(user.id);
+                    setResultsData(results.data || []);
+                    
+                    // Fetch subjects data
+                    const subjects = await subjectsAPI.getAll();
+                    setSubjectsData(subjects.data || subjects || []);
+                }
+            } catch (error) {
+                console.error('Error fetching student data:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchStudentData();
+    }, []);
 
     const subjects = subjectsBySemester[selectedSemester] || [];
 
-    // Calculate statistics
-    const totalMarks = testData.reduce((sum, test) => sum + test.score, 0);
-    const averageScore = Math.round(totalMarks / testData.length);
-    const excellentCount = testData.filter(test => test.status === "excellent").length;
-    const highestScore = Math.max(...testData.map(test => test.score));
+    // Calculate statistics from real data
+    const totalMarks = resultsData.reduce((sum, result) => sum + (result.score || 0), 0);
+    const averageScore = resultsData.length > 0 ? Math.round(totalMarks / resultsData.length) : 0;
+    const excellentCount = resultsData.filter(result => (result.score || 0) >= 90).length;
+    const highestScore = resultsData.length > 0 ? Math.max(...resultsData.map(result => result.score || 0)) : 0;
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -260,6 +294,14 @@ const MarksReport = () => {
         }, 500);
         return () => clearTimeout(timer);
     }, [selectedSubject]);
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 px-4 pt-4 pb-28 md:px-8 md:py-10">

@@ -14,6 +14,7 @@
     "db:seed:mongo": "cd backend && powershell -ExecutionPolicy Bypass -File run-mongo-seed.ps1",
     "db:seed:batch": "cd backend && run-mongo-seed.bat",
     "db:seed:manual": "cd backend && mongosh erp_college --file create-test-data-mongo.js",
+    "test:data": "node run-test-data.js",
     "db:studio": "cd backend && npm run db:studio",
     "clean": "rm -rf node_modules && cd backend && rm -rf node_modules && cd ../frontend && rm -rf node_modules",
     "reset": "npm run clean && npm run install:all && npm run db:generate && npm run db:push"

@@ -1,5 +1,5 @@
 // src/components/TodaysClasses.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Clock, 
   MapPin, 
@@ -15,9 +15,12 @@ import {
   Pause,
   Utensils
 } from 'lucide-react';
+import { timetableAPI } from '../../../../api';
 
-const TodaysClasses = () => {
+const TodaysClasses = ({ studentData }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [timetableData, setTimetableData] = useState([]);
+  const [loading, setLoading] = useState(true);
   
   // Get today's day index (0 = Monday, 1 = Tuesday, etc.)
   const getTodayIndex = () => {
@@ -27,6 +30,25 @@ const TodaysClasses = () => {
   };
   
   const [selectedDay, setSelectedDay] = useState(getTodayIndex());
+
+  // Fetch timetable data
+  useEffect(() => {
+    const fetchTimetable = async () => {
+      try {
+        setLoading(true);
+        if (studentData?.classId) {
+          const timetable = await timetableAPI.getClassTimetable(studentData.classId);
+          setTimetableData(timetable.data || []);
+        }
+      } catch (error) {
+        console.error('Error fetching timetable:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTimetable();
+  }, [studentData]);
 
   // Update time every minute
   React.useEffect(() => {
@@ -42,61 +64,42 @@ const TodaysClasses = () => {
 
   const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   
-  const schedule = [
-    { 
-      time: '09:00 AM - 10:00 AM', 
-      subject: 'Data Structures & Algorithms', 
-      room: 'Lab 301',
-      type: 'lecture',
-      status: 'completed'
-    },
-    { 
-      time: '10:15 AM - 11:00 AM', 
-      subject: 'Operating Systems', 
-      room: 'Room 205',
-      type: 'lecture',
-      status: 'completed'
-    },
-    { 
-      time: '11:00 AM - 11:25 AM', 
-      subject: 'Tea Break', 
-      room: 'Canteen',
-      type: 'break',
-      status: 'completed'
-    },
-    { 
-      time: '11:30 AM - 12:30 PM', 
-      subject: 'Discrete Mathematics', 
-      room: 'Room 102',
-      type: 'lecture',
-      status: 'current'
-    },
-    { 
-      time: '12:30 PM - 01:30 PM', 
-      subject: 'Computer Networks', 
-      room: 'Lab 401',
+  // Convert timetable data to schedule format
+  const schedule = timetableData
+    .filter(item => item.day === weekDays[selectedDay])
+    .map(item => ({
+      time: `${item.startTime} - ${item.endTime}`,
+      subject: item.subjectName || 'Subject',
+      room: item.room || 'Room TBD',
       type: 'lecture',
       status: 'upcoming'
-    },
-    { 
-      time: '01:30 PM - 02:30 PM', 
-      subject: 'Lunch Break', 
-      room: 'Canteen',
-      type: 'break',
-      status: 'upcoming'
-    },
-    { 
-      time: '02:45 PM - 03:45 PM', 
-      subject: 'Database Management', 
-      room: 'Room 308',
-      type: 'lecture',
-      status: 'upcoming'
+    }))
+    .sort((a, b) => {
+      const [startTimeA] = a.time.split(' - ');
+      const [startTimeB] = b.time.split(' - ');
+      return startTimeA.localeCompare(startTimeB);
+    });
+
+  // Add breaks between classes
+  const scheduleWithBreaks = [];
+  schedule.forEach((item, index) => {
+    if (index > 0) {
+      // Add a break
+      scheduleWithBreaks.push({
+        time: 'Break',
+        subject: 'Break Time',
+        room: 'Canteen',
+        type: 'break',
+        status: 'upcoming'
+      });
     }
-  ];
+    scheduleWithBreaks.push(item);
+  });
 
   const getCurrentItem = () => {
     const now = currentTime.getHours() * 60 + currentTime.getMinutes();
-    return schedule.find(item => {
+    return scheduleWithBreaks.find(item => {
+      if (item.type === 'break') return false;
       const [startTime] = item.time.split(' - ');
       const [time, period] = startTime.split(' ');
       let [hours, minutes] = time.split(':').map(Number);
@@ -118,6 +121,8 @@ const TodaysClasses = () => {
   const currentItem = getCurrentItem();
 
   const getStatus = (item) => {
+    if (item.type === 'break') return 'upcoming';
+    
     const now = currentTime.getHours() * 60 + currentTime.getMinutes();
     const [startTime] = item.time.split(' - ');
     const [time, period] = startTime.split(' ');
@@ -137,6 +142,18 @@ const TodaysClasses = () => {
     if (now > itemEnd) return 'completed';
     return 'upcoming';
   };
+
+  if (loading) {
+    return (
+      <div className="w-full px-4 lg:px-8 py-10">
+        <div className="bg-gradient-to-br from-white via-blue-50 to-purple-50 rounded-3xl shadow-xl p-6 lg:p-8 border border-blue-100 mb-[5rem]">
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full px-4 lg:px-8 py-10   ">
@@ -198,89 +215,95 @@ const TodaysClasses = () => {
 
         {/* Schedule Grid */}
         <div className="grid gap-3 sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
-          {schedule.map((item, idx) => {
-            const status = getStatus(item);
-            const isCurrent = status === 'current';
-            const isCompleted = status === 'completed';
-            const isBreak = item.type === 'break';
-            
-            return (
-              <div
-                key={idx}
-                className={`group relative overflow-hidden rounded-xl shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-102 ${
-                  isCurrent 
-                    ? 'ring-2 ring-green-400 bg-green-50 border border-green-200' 
-                    : isCompleted
-                      ? 'bg-gray-50 border border-gray-200'
-                      : 'bg-white border border-gray-200'
-                }`}
-              >
-                {/* Content */}
-                <div className="p-4">
-                  {/* Header */}
-                  <div className="flex items-center justify-between mb-3">
-                    <div className={`rounded-full p-2 ${
-                      isCurrent 
-                        ? 'bg-green-100 text-green-600' 
-                        : isCompleted
-                          ? 'bg-gray-100 text-gray-500'
-                          : isBreak
-                            ? 'bg-orange-100 text-orange-600'
-                            : 'bg-blue-100 text-blue-600'
-                    }`}>
-                      {isBreak ? <Coffee className="w-4 h-4" /> : <BookOpen className="w-4 h-4" />}
+          {scheduleWithBreaks.length > 0 ? (
+            scheduleWithBreaks.map((item, idx) => {
+              const status = getStatus(item);
+              const isCurrent = status === 'current';
+              const isCompleted = status === 'completed';
+              const isBreak = item.type === 'break';
+              
+              return (
+                <div
+                  key={idx}
+                  className={`group relative overflow-hidden rounded-xl shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-102 ${
+                    isCurrent 
+                      ? 'ring-2 ring-green-400 bg-green-50 border border-green-200' 
+                      : isCompleted
+                        ? 'bg-gray-50 border border-gray-200'
+                        : 'bg-white border border-gray-200'
+                  }`}
+                >
+                  {/* Content */}
+                  <div className="p-4">
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className={`rounded-full p-2 ${
+                        isCurrent 
+                          ? 'bg-green-100 text-green-600' 
+                          : isCompleted
+                            ? 'bg-gray-100 text-gray-500'
+                            : isBreak
+                              ? 'bg-orange-100 text-orange-600'
+                              : 'bg-blue-100 text-blue-600'
+                      }`}>
+                        {isBreak ? <Coffee className="w-4 h-4" /> : <BookOpen className="w-4 h-4" />}
+                      </div>
+                      <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        isCurrent 
+                          ? 'bg-green-500 text-white' 
+                          : isCompleted
+                            ? 'bg-gray-500 text-white'
+                            : 'bg-blue-500 text-white'
+                      }`}>
+                        {isCurrent ? 'LIVE' : isCompleted ? 'COMPLETED' : 'UPCOMING'}
+                      </div>
                     </div>
-                    <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      isCurrent 
-                        ? 'bg-green-500 text-white' 
-                        : isCompleted
-                          ? 'bg-gray-500 text-white'
-                          : 'bg-blue-500 text-white'
+
+                    {/* Subject */}
+                    <h3 className={`text-base font-semibold mb-2 ${
+                      isCompleted ? 'text-gray-500 line-through' : 'text-gray-800'
                     }`}>
-                      {isCurrent ? 'LIVE' : isCompleted ? 'COMPLETED' : 'UPCOMING'}
+                      {item.subject}
+                    </h3>
+
+                    {/* Time */}
+                    <div className="flex items-center gap-2 mb-2">
+                      <Clock className="w-4 h-4 text-gray-500" />
+                      <span className="text-sm text-gray-600">{item.time}</span>
                     </div>
-                  </div>
 
-                  {/* Subject */}
-                  <h3 className={`text-base font-semibold mb-2 ${
-                    isCompleted ? 'text-gray-500 line-through' : 'text-gray-800'
-                  }`}>
-                    {item.subject}
-                  </h3>
-
-                  {/* Time */}
-                  <div className="flex items-center gap-2 mb-2">
-                    <Clock className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm text-gray-600">{item.time}</span>
-                  </div>
-
-                  {/* Room */}
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm text-gray-600">{item.room}</span>
+                    {/* Room */}
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-gray-500" />
+                      <span className="text-sm text-gray-600">{item.room}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })
+          ) : (
+            <div className="col-span-full text-center py-8">
+              <p className="text-gray-500">No classes scheduled for {weekDays[selectedDay]}</p>
+            </div>
+          )}
         </div>
 
         {/* Quick Stats */}
         <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className="bg-white rounded-xl p-4 shadow-md border border-gray-100 text-center">
-            <div className="text-2xl font-bold text-blue-600">{schedule.filter(s => s.type === 'lecture').length}</div>
+            <div className="text-2xl font-bold text-blue-600">{scheduleWithBreaks.filter(s => s.type === 'lecture').length}</div>
             <div className="text-sm text-gray-600">Total Classes</div>
           </div>
           <div className="bg-white rounded-xl p-4 shadow-md border border-gray-100 text-center">
-            <div className="text-2xl font-bold text-green-600">{schedule.filter(s => getStatus(s) === 'current').length}</div>
+            <div className="text-2xl font-bold text-green-600">{scheduleWithBreaks.filter(s => getStatus(s) === 'current').length}</div>
             <div className="text-sm text-gray-600">Live Now</div>
           </div>
           <div className="bg-white rounded-xl p-4 shadow-md border border-gray-100 text-center">
-            <div className="text-2xl font-bold text-gray-600">{schedule.filter(s => getStatus(s) === 'completed').length}</div>
+            <div className="text-2xl font-bold text-gray-600">{scheduleWithBreaks.filter(s => getStatus(s) === 'completed').length}</div>
             <div className="text-sm text-gray-600">Completed</div>
           </div>
           <div className="bg-white rounded-xl p-4 shadow-md border border-gray-100 text-center">
-            <div className="text-2xl font-bold text-orange-600">{schedule.filter(s => s.type === 'break').length}</div>
+            <div className="text-2xl font-bold text-orange-600">{scheduleWithBreaks.filter(s => s.type === 'break').length}</div>
             <div className="text-sm text-gray-600">Breaks</div>
           </div>
         </div>

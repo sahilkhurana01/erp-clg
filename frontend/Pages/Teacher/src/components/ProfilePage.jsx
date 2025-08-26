@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import useAuthStore from '../../../../store/authStore';
+import { useNavigate } from 'react-router-dom';
 import {
     User, Mail, Calendar, GraduationCap, MapPin, Edit3, Upload, Download,
     FileText, Shield, CheckCircle, Clock, AlertTriangle, Eye, EyeOff,
@@ -164,6 +165,9 @@ const ProfilePage = () => {
         </div>
     );
 
+    const navigate = useNavigate();
+    const logout = useAuthStore(state => state.logout);
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-violet-50">
             {/* Header */}
@@ -175,7 +179,7 @@ const ProfilePage = () => {
                         </div>
                         <h1 className="text-3xl font-bold text-gray-800">Teacher Profile</h1>
                         <button
-                          onClick={() => useAuthStore.getState().logout()}
+                          onClick={async () => { await logout(); navigate('/'); }}
                           className="px-3 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600"
                         >
                           Logout

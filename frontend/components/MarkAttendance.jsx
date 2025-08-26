@@ -1,42 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Save, Users, BookOpen, Calendar, CheckCircle, XCircle, Clock, Activity, Copy, BarChart3, Heart, Zap, Star, Trophy } from 'lucide-react';
+import { classesAPI, subjectsAPI, studentsAPI, attendanceAPI } from '../api';
 
 const MarksAttendance = () => {
-    // Mock data for classes and subjects
-    const classes = ['BCA-1', 'BCA-2', 'BCA-3', 'MCA-1', 'MCA-2', 'BSc-CS-1', 'BSc-CS-2'];
-    const subjects = ['Mathematics', 'Programming', 'Database Systems', 'Web Development', 'Data Structures', 'Operating Systems'];
-
-    // Mock student data
-    const mockStudents = {
-        'BCA-1': [
-            { id: 1, name: 'Arjun Sharma', rollNumber: 'BCA001' },
-            { id: 2, name: 'Priya Patel', rollNumber: 'BCA002' },
-            { id: 3, name: 'Rahul Kumar', rollNumber: 'BCA003' },
-            { id: 4, name: 'Sneha Gupta', rollNumber: 'BCA004' },
-            { id: 5, name: 'Vikram Singh', rollNumber: 'BCA005' },
-            { id: 6, name: 'Anjali Mehta', rollNumber: 'BCA006' },
-            { id: 7, name: 'Rohit Verma', rollNumber: 'BCA007' },
-            { id: 8, name: 'Kavya Nair', rollNumber: 'BCA008' },
-        ],
-        'BCA-2': [
-            { id: 9, name: 'Amit Joshi', rollNumber: 'BCA021' },
-            { id: 10, name: 'Isha Reddy', rollNumber: 'BCA022' },
-            { id: 11, name: 'Karan Agarwal', rollNumber: 'BCA023' },
-            { id: 12, name: 'Naina Chopra', rollNumber: 'BCA024' },
-            { id: 13, name: 'Siddharth Rao', rollNumber: 'BCA025' },
-            { id: 14, name: 'Pooja Bansal', rollNumber: 'BCA026' },
-        ],
-        'BCA-3': [
-            { id: 15, name: 'Deepak Malhotra', rollNumber: 'BCA031' },
-            { id: 16, name: 'Riya Saxena', rollNumber: 'BCA032' },
-            { id: 17, name: 'Harsh Tiwari', rollNumber: 'BCA033' },
-            { id: 18, name: 'Megha Jain', rollNumber: 'BCA034' },
-        ]
-    };
-
     // State management
-    const [selectedClass, setSelectedClass] = useState('');
-    const [selectedSubject, setSelectedSubject] = useState('');
+    const [classes, setClasses] = useState([]);
+    const [subjects, setSubjects] = useState([]);
     const [students, setStudents] = useState([]);
     const [attendanceData, setAttendanceData] = useState({});
     const [isHoliday, setIsHoliday] = useState(false);
@@ -44,6 +13,64 @@ const MarksAttendance = () => {
     const [toastMessage, setToastMessage] = useState('');
     const [showMarksSection, setShowMarksSection] = useState(false);
     const [marksData, setMarksData] = useState({});
+    const [loading, setLoading] = useState(true);
+    const [selectedClass, setSelectedClass] = useState('');
+    const [selectedSubject, setSelectedSubject] = useState('');
+
+    // Fetch classes and subjects on component mount
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setLoading(true);
+                const [classesRes, subjectsRes] = await Promise.all([
+                    classesAPI.getAll(1, 100),
+                    subjectsAPI.getAll(1, 100)
+                ]);
+                
+                setClasses(classesRes?.data || classesRes || []);
+                setSubjects(subjectsRes?.data || subjectsRes || []);
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, []);
+
+    // Fetch students when class changes
+    useEffect(() => {
+        const fetchStudents = async () => {
+            if (selectedClass) {
+                try {
+                    setLoading(true);
+                    // Get all students and filter by class
+                    const studentsRes = await studentsAPI.getAll(1, 100, '');
+                    const allStudents = studentsRes?.data || studentsRes || [];
+                    const classStudents = allStudents.filter(student => student.classId === selectedClass);
+                    
+                    setStudents(classStudents);
+
+                    // Initialize attendance data
+                    const initialAttendance = {};
+                    const initialMarks = {};
+                    classStudents.forEach(student => {
+                        initialAttendance[student._id] = '';
+                        initialMarks[student._id] = '';
+                    });
+                    setAttendanceData(initialAttendance);
+                    setMarksData(initialMarks);
+                } catch (error) {
+                    console.error('Error fetching students:', error);
+                } finally {
+                    setLoading(false);
+                }
+            }
+        };
+
+        fetchStudents();
+    }, [selectedClass]);
 
     // Attendance options with fun styling
     const attendanceOptions = [
@@ -80,24 +107,6 @@ const MarksAttendance = () => {
             shortcut: 'D'
         }
     ];
-
-    // Update students when class changes
-    useEffect(() => {
-        if (selectedClass) {
-            const classStudents = mockStudents[selectedClass] || [];
-            setStudents(classStudents);
-
-            // Initialize attendance data
-            const initialAttendance = {};
-            const initialMarks = {};
-            classStudents.forEach(student => {
-                initialAttendance[student.id] = '';
-                initialMarks[student.id] = '';
-            });
-            setAttendanceData(initialAttendance);
-            setMarksData(initialMarks);
-        }
-    }, [selectedClass]);
 
     // Show toast notification with fun animations
     const showNotification = (message, type = 'success') => {
@@ -143,7 +152,7 @@ const MarksAttendance = () => {
         if (isHoliday) return;
         const bulkData = {};
         students.forEach(student => {
-            bulkData[student.id] = status;
+            bulkData[student._id] = status;
         });
         setAttendanceData(bulkData);
 
@@ -157,14 +166,29 @@ const MarksAttendance = () => {
     };
 
     // Copy previous day's data
-    const copyPreviousData = () => {
-        if (isHoliday) return;
-        const mockPreviousAttendance = {};
-        students.forEach(student => {
-            mockPreviousAttendance[student.id] = 'present';
-        });
-        setAttendanceData(mockPreviousAttendance);
-        showNotification('✨ Previous day\'s attendance copied!');
+    const copyPreviousData = async () => {
+        if (isHoliday || !selectedClass) return;
+        
+        try {
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = yesterday.toISOString().split('T')[0];
+            
+            const previousAttendance = await attendanceAPI.getClassAttendance(selectedClass, yesterdayStr);
+            if (previousAttendance.data && previousAttendance.data.length > 0) {
+                const previousData = {};
+                previousAttendance.data.forEach(record => {
+                    previousData[record.studentId] = record.status;
+                });
+                setAttendanceData(previousData);
+                showNotification('✨ Previous day\'s attendance copied!');
+            } else {
+                showNotification('📝 No previous attendance data found', 'warning');
+            }
+        } catch (error) {
+            console.error('Error copying previous data:', error);
+            showNotification('❌ Error copying previous data', 'error');
+        }
     };
 
     // Calculate statistics
@@ -181,21 +205,50 @@ const MarksAttendance = () => {
         return { avgAttendance, presentCount, absentCount, medicalCount, dutyCount };
     };
 
+    // Handle keyboard shortcuts
+    const handleKeyPress = (e, studentId) => {
+        const key = e.key.toUpperCase();
+        const option = attendanceOptions.find(opt => opt.shortcut === key);
+        if (option && !isHoliday && !loading) {
+            handleAttendanceChange(studentId, option.value);
+        }
+    };
+
     // Save data
-    const saveData = () => {
+    const saveData = async () => {
         if (!selectedClass || !selectedSubject) {
             showNotification('⚠️ Please select class and subject first!', 'warning');
             return;
         }
 
-        const unmarkedStudents = students.filter(student => !attendanceData[student.id]);
+        const unmarkedStudents = students.filter(student => !attendanceData[student._id]);
         if (unmarkedStudents.length > 0) {
             showNotification('📝 Please mark attendance for all students!', 'warning');
             return;
         }
 
-        // Mock save with celebration
-        showNotification('🎉 Data saved successfully! You\'re awesome!');
+        try {
+            // Save attendance data
+            const today = new Date().toISOString().split('T')[0];
+            const attendanceRecords = students.map(student => ({
+                studentId: student._id,
+                classId: selectedClass,
+                subjectId: selectedSubject,
+                date: today,
+                status: attendanceData[student._id],
+                markedBy: 'teacher' // This should come from auth context
+            }));
+
+            // Save each attendance record
+            for (const record of attendanceRecords) {
+                await attendanceAPI.markAttendance(record);
+            }
+
+            showNotification('🎉 Attendance saved successfully! You\'re awesome!');
+        } catch (error) {
+            console.error('Error saving attendance:', error);
+            showNotification('❌ Error saving attendance data', 'error');
+        }
     };
 
     // Keyboard shortcuts
@@ -257,12 +310,16 @@ const MarksAttendance = () => {
                                 value={selectedClass}
                                 onChange={(e) => setSelectedClass(e.target.value)}
                                 className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-200"
-                                disabled={isHoliday}
+                                disabled={isHoliday || loading}
                             >
                                 <option value="">🎓 Select a class</option>
-                                {classes.map(cls => (
-                                    <option key={cls} value={cls}>{cls}</option>
-                                ))}
+                                {loading ? (
+                                    <option value="">Loading classes...</option>
+                                ) : (
+                                    classes.map(cls => (
+                                        <option key={cls._id} value={cls._id}>{cls.name}</option>
+                                    ))
+                                )}
                             </select>
                         </div>
 
@@ -275,12 +332,16 @@ const MarksAttendance = () => {
                                 value={selectedSubject}
                                 onChange={(e) => setSelectedSubject(e.target.value)}
                                 className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all duration-200"
-                                disabled={isHoliday}
+                                disabled={isHoliday || loading}
                             >
                                 <option value="">📚 Select a subject</option>
-                                {subjects.map(subject => (
-                                    <option key={subject} value={subject}>{subject}</option>
-                                ))}
+                                {loading ? (
+                                    <option value="">Loading subjects...</option>
+                                ) : (
+                                    subjects.map(subject => (
+                                        <option key={subject._id} value={subject._id}>{subject.name}</option>
+                                    ))
+                                )}
                             </select>
                         </div>
 
@@ -349,8 +410,8 @@ const MarksAttendance = () => {
                                         <button
                                             key={option.value}
                                             onClick={() => markAllAttendance(option.value)}
-                                            disabled={isHoliday}
-                                            className={`px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 transform hover:scale-105 ${isHoliday
+                                            disabled={isHoliday || loading}
+                                            className={`px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 transform hover:scale-105 ${isHoliday || loading
                                                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                                 : option.color
                                                 }`}
@@ -363,8 +424,8 @@ const MarksAttendance = () => {
 
                                 <button
                                     onClick={copyPreviousData}
-                                    disabled={isHoliday}
-                                    className={`w-full px-4 py-3 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 ${isHoliday
+                                    disabled={isHoliday || loading}
+                                    className={`w-full px-4 py-3 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 ${isHoliday || loading
                                         ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                         : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg hover:shadow-xl'
                                         }`}
@@ -383,7 +444,7 @@ const MarksAttendance = () => {
                         {/* Section Header */}
                         <div className="text-center">
                             <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                                📋 {selectedClass} - {selectedSubject}
+                                📋 {classes.find(c => c._id === selectedClass)?.name || 'Class'} - {subjects.find(s => s._id === selectedSubject)?.name || 'Subject'}
                             </h2>
                             <p className="text-gray-600">Tap the buttons to mark attendance quickly!</p>
                         </div>
@@ -391,16 +452,16 @@ const MarksAttendance = () => {
                         {/* Students Grid */}
                         <div className="grid grid-cols-1 md:grid-cols-2  gap-4">
                             {students.map((student, index) => {
-                                const attendance = attendanceData[student.id];
+                                const attendance = attendanceData[student._id];
                                 const selectedOption = attendanceOptions.find(opt => opt.value === attendance);
 
                                 return (
                                     <div
-                                        key={student.id}
-                                        className={`bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border-2 transition-all duration-300 hover:shadow-xl transform hover:-translate-y-1 ${isHoliday ? 'opacity-50 border-gray-200' :
+                                        key={student._id}
+                                        className={`bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border-2 transition-all duration-300 hover:shadow-xl transform hover:-translate-y-1 ${isHoliday || loading ? 'opacity-50 border-gray-200' :
                                             selectedOption ? selectedOption.activeColor : 'border-gray-200 hover:border-blue-300'
                                             }`}
-                                        onKeyDown={(e) => handleKeyPress(e, student.id)}
+                                        onKeyDown={(e) => handleKeyPress(e, student._id)}
                                         tabIndex={0}
                                     >
                                         <div className="p-6">
@@ -413,7 +474,7 @@ const MarksAttendance = () => {
                                                     </div>
                                                     <div>
                                                         <h3 className="font-semibold text-gray-800">{student.name}</h3>
-                                                        <p className="text-sm text-gray-500">{student.rollNumber}</p>
+                                                        <p className="text-sm text-gray-500">{student.rollNo}</p>
                                                     </div>
                                                 </div>
 
@@ -430,9 +491,9 @@ const MarksAttendance = () => {
                                                 {attendanceOptions.map(option => (
                                                     <button
                                                         key={option.value}
-                                                        onClick={() => handleAttendanceChange(student.id, option.value)}
-                                                        disabled={isHoliday}
-                                                        className={`px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 transform hover:scale-105 ${isHoliday
+                                                        onClick={() => handleAttendanceChange(student._id, option.value)}
+                                                        disabled={isHoliday || loading}
+                                                        className={`px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 transform hover:scale-105 ${isHoliday || loading
                                                             ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                                             : attendance === option.value
                                                                 ? option.color + ' shadow-lg'
@@ -479,9 +540,9 @@ const MarksAttendance = () => {
             {selectedClass && selectedSubject && students.length > 0 && (
                 <button
                     onClick={saveData}
-                    disabled={isHoliday}
+                    disabled={isHoliday || loading}
                     className={`fixed bottom-20 sm:bottom-6 right-4 sm:right-6 w-14 h-14 sm:w-auto sm:h-auto rounded-full flex items-center justify-center shadow-xl z-50 transition-transform duration-300 hover:scale-110
-    ${isHoliday
+    ${isHoliday || loading
                             ? 'bg-gray-400 text-white cursor-not-allowed'
                             : 'bg-gradient-to-br from-teal-400 to-blue-500 text-white'
                         }`}

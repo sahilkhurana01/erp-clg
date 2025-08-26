@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import useAuthStore from "../../../../store/authStore";
 import BottomNav from "../components/BottomNav";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
+import { studentsAPI, attendanceAPI, resultsAPI } from "../../../../api";
 import {
     ChevronRight,
     User,
@@ -85,7 +86,7 @@ import {
 
 const profileOptions = [
     { label: "Edit Profile", icon: User, description: "Personalize your profile", to: "/editprofile" },
-    { label: "Payment & Fees", icon: CreditCard, description: "Manage payments & scholarships", to: "/payment" },
+    { label: "Payment & Fees", icon: CreditCard, description: "Manage payments & scholarships", to: "/payroll" },
     { label: "Notifications", icon: Bell, description: "Stay updated with alerts", to: "/notifications" },
     { label: "Language", icon: Languages, extra: "English (US)", description: "Choose your preferred language", to: "/language" },
     { label: "Dark Mode", icon: Eye, description: "Toggle theme preference", isToggle: true },
@@ -96,30 +97,89 @@ const achievements = [
     { title: "Dean's List", icon: Trophy, color: "text-yellow-600", bgColor: "bg-yellow-100" },
     { title: "Coding Champion", icon: Crown, color: "text-purple-600", bgColor: "bg-purple-100" },
     { title: "Team Leader", icon: Users, color: "text-blue-600", bgColor: "bg-blue-100" },
-    { title: "Perfect Attendance", icon: Award, color: "text-green-600", bgColor: "bg-green-100" },
-];
-
-const stats = [
-    { label: "GPA", value: "3.8", icon: Target, color: "text-emerald-600" },
-    { label: "Courses", value: "12", icon: BookOpen, color: "text-blue-600" },
-    { label: "Projects", value: "8", icon: Briefcase, color: "text-purple-600" },
-    { label: "Rank", value: "#15", icon: TrendingUp, color: "text-orange-600" },
-];
-
-const quickActions = [
-    { label: "Edit Profile", icon: Edit3, color: "bg-blue-500" },
-    { label: "Share Profile", icon: Share2, color: "bg-green-500" },
-    { label: "Download Resume", icon: Download, color: "bg-purple-500" },
-    { label: "Settings", icon: Settings, color: "bg-orange-500" },
+    { title: "Perfect Attendance", icon: Award, color: "text-green-600", bgColor: "bg-green-600" },
 ];
 
 const ProfilePage = () => {
+    const navigate = useNavigate();
+    const [studentData, setStudentData] = useState(null);
+    const [attendanceData, setAttendanceData] = useState([]);
+    const [resultsData, setResultsData] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [isNotificationEnabled, setIsNotificationEnabled] = useState(true);
     const [selectedLanguage, setSelectedLanguage] = useState("English (US)");
     const [showAchievements, setShowAchievements] = useState(true);
     const [profileImage, setProfileImage] = useState(null);
     const [currentPage, setCurrentPage] = useState('profile');
+
+    useEffect(() => {
+        const fetchStudentData = async () => {
+            try {
+                setLoading(true);
+                const user = JSON.parse(localStorage.getItem('user') || '{}');
+                if (user.id) {
+                    const student = await studentsAPI.getById(user.id);
+                    setStudentData(student);
+                    
+                    // Fetch attendance data
+                    const now = new Date();
+                    const startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+                    const endDate = now.toISOString().split('T')[0];
+                    const attendance = await attendanceAPI.getStudentAttendance(user.id, startDate, endDate);
+                    setAttendanceData(attendance.data || []);
+                    
+                    // Fetch results data
+                    const results = await resultsAPI.getByStudent(user.id);
+                    setResultsData(results.data || []);
+                }
+            } catch (error) {
+                console.error('Error fetching student data:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchStudentData();
+    }, []);
+
+    const calculateAttendanceStats = () => {
+        if (!attendanceData.length) return { present: 0, total: 0, percentage: 0 };
+        
+        const present = attendanceData.filter(a => a.status === 'present').length;
+        const total = attendanceData.length;
+        const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
+        
+        return { present, total, percentage };
+    };
+
+    const calculatePerformanceStats = () => {
+        if (!resultsData.length) return { average: 0, highest: 0, subjects: 0 };
+        
+        const scores = resultsData.map(r => r.score || 0);
+        const average = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+        const highest = Math.max(...scores, 0);
+        const subjects = resultsData.length;
+        
+        return { average, highest, subjects };
+    };
+
+    const attendanceStats = calculateAttendanceStats();
+    const performanceStats = calculatePerformanceStats();
+
+    const stats = [
+        { label: "GPA", value: performanceStats.average > 0 ? (performanceStats.average / 10).toFixed(1) : "N/A", icon: Target, color: "text-emerald-600" },
+        { label: "Attendance", value: `${attendanceStats.percentage}%`, icon: TrendingUp, color: "text-blue-600" },
+        { label: "Subjects", value: performanceStats.subjects.toString(), icon: BookOpen, color: "text-purple-600" },
+        { label: "Highest Score", value: performanceStats.highest.toString(), icon: Award, color: "text-orange-600" },
+    ];
+
+    const quickActions = [
+        { label: "Edit Profile", icon: Edit3, color: "bg-blue-500" },
+        { label: "Share Profile", icon: Share2, color: "bg-green-500" },
+        { label: "Download Resume", icon: Download, color: "bg-purple-500" },
+        { label: "Settings", icon: Settings, color: "bg-orange-500" },
+    ];
 
     const handleImageUpload = (event) => {
         const file = event.target.files[0];
@@ -130,7 +190,7 @@ const ProfilePage = () => {
         }
     };
 
-    const handleOptionClick = (option) => {
+    const handleOptionClick = async (option) => {
         if (option.label === "Dark Mode") {
             setIsDarkMode(!isDarkMode);
         } else if (option.label === "Notifications") {
@@ -139,7 +199,11 @@ const ProfilePage = () => {
             setCurrentPage('edit-profile');
         } else if (option.label === "Logout") {
             const { logout } = useAuthStore.getState();
-            logout();
+            try {
+                await logout();
+            } finally {
+                navigate('/student');
+            }
         }
     };
 
@@ -189,29 +253,37 @@ const ProfilePage = () => {
         );
 
         // Handle different types of options
-        if (isToggle || isAction) {
+        if (isAction) {
             return (
                 <button
                     key={idx}
                     onClick={() => handleOptionClick(option)}
-                    className={`flex w-full items-start text-left p-3 ${isDarkMode ? 'hover:bg-gray-700' : isMobile ? 'hover:bg-blue-50' : 'hover:bg-blue-50'} transition-all rounded-xl`}
+                    className={`w-full ${isMobile ? 'p-3' : 'p-4'} rounded-xl text-left transition-all duration-200 transform hover:scale-105 ${
+                        isDarkMode 
+                            ? 'bg-gray-700 hover:bg-gray-600 border-gray-600' 
+                            : 'bg-white hover:bg-gray-50 border-gray-200'
+                    } border shadow-sm hover:shadow-md`}
                 >
                     {Content}
                 </button>
             );
         }
 
-        // Use NavLink for navigation options
         if (to) {
             return (
                 <NavLink
                     key={idx}
                     to={to}
                     className={({ isActive }) =>
-                        `flex w-full items-start text-left p-3 ${isActive
-                            ? (isDarkMode ? 'bg-gray-700 border-blue-500' : 'bg-blue-100 border-blue-300')
-                            : ''
-                        } ${isDarkMode ? 'hover:bg-gray-700' : isMobile ? 'hover:bg-blue-50' : 'hover:bg-blue-50'} transition-all rounded-xl ${isActive ? 'border-l-4' : ''}`
+                        `w-full ${isMobile ? 'p-3' : 'p-4'} rounded-xl text-left transition-all duration-200 transform hover:scale-105 ${
+                            isActive
+                                ? isDarkMode 
+                                    ? 'bg-blue-600 text-white border-blue-500' 
+                                    : 'bg-blue-50 text-blue-700 border-blue-200'
+                                : isDarkMode 
+                                    ? 'bg-gray-700 hover:bg-gray-600 border-gray-600' 
+                                    : 'bg-white hover:bg-gray-50 border-gray-200'
+                        } border shadow-sm hover:shadow-md`
                     }
                 >
                     {Content}
@@ -219,17 +291,27 @@ const ProfilePage = () => {
             );
         }
 
-        // Fallback to button
         return (
-            <button
+            <div
                 key={idx}
-                onClick={() => handleOptionClick(option)}
-                className={`flex w-full items-start text-left p-3 ${isDarkMode ? 'hover:bg-gray-700' : isMobile ? 'hover:bg-blue-50' : 'hover:bg-blue-50'} transition-all rounded-xl`}
+                className={`w-full ${isMobile ? 'p-3' : 'p-4'} rounded-xl text-left transition-all duration-200 transform hover:scale-105 ${
+                    isDarkMode 
+                        ? 'bg-gray-700 hover:bg-gray-600 border-gray-600' 
+                        : 'bg-white hover:bg-gray-50 border-gray-200'
+                } border shadow-sm hover:shadow-md`}
             >
                 {Content}
-            </button>
+            </div>
         );
     };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+        );
+    }
 
     return (
         <>
@@ -277,15 +359,15 @@ const ProfilePage = () => {
                         {/* Profile Info */}
                         <div className="text-center mt-4 mb-6">
                             <h3 className={`font-bold text-2xl ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-1`}>
-                                Harsha Kumar
+                                {studentData?.name || 'Student Name'}
                                 <Sparkles className="inline-block ml-2 h-5 w-5 text-yellow-500" />
                             </h3>
                             <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} mb-2`}>
-                                B.Tech CSE 2nd Year • Roll: 22CSE102
+                                {studentData?.classId || 'Class'} • Roll: {studentData?.rollNo || 'N/A'}
                             </p>
                             <div className="flex justify-center items-center gap-2 text-xs text-blue-600 font-medium">
                                 <MapPin className="h-3 w-3" />
-                                <span>IIIT Hyderabad</span>
+                                <span>{studentData?.section || 'Section'}</span>
                             </div>
                         </div>
 
@@ -338,15 +420,15 @@ const ProfilePage = () => {
                             {/* Profile Info */}
                             <div className="text-center mb-">
                                 <h3 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-2 flex items-center justify-center gap-2`}>
-                                    Harsha Kumar
+                                    {studentData?.name || 'Student Name'}
                                     <Sparkles className="h-6 w-6 text-yellow-500" />
                                 </h3>
                                 <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} mb-3`}>
-                                    B.Tech Computer Science Engineering • 2nd Year
+                                    {studentData?.classId || 'Class'} • {studentData?.section || 'Section'}
                                 </p>
                                 <div className="flex justify-center items-center gap-2 text-sm text-blue-600 font-medium mb-4">
                                     <MapPin className="h-4 w-4" />
-                                    <span>IIIT Hyderabad</span>
+                                    <span>{studentData?.rollNo || 'Roll Number'}</span>
                                 </div>
                             </div>
 
@@ -371,25 +453,25 @@ const ProfilePage = () => {
                                     <div className="flex items-center gap-3">
                                         <BadgeCheck className="h-4 w-4 text-blue-500" />
                                         <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>
-                                            <strong>Roll No:</strong> 22CSE102
+                                            <strong>Roll No:</strong> {studentData?.rollNo || 'N/A'}
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <GraduationCap className="h-4 w-4 text-green-500" />
                                         <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>
-                                            <strong>Course:</strong> B.Tech CSE
+                                            <strong>Course:</strong> {studentData?.classId || 'N/A'}
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <School className="h-4 w-4 text-purple-500" />
                                         <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>
-                                            <strong>Batch:</strong> 2023 - 2027
+                                            <strong>Section:</strong> {studentData?.section || 'N/A'}
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <Mail className="h-4 w-4 text-red-500" />
                                         <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>
-                                            <strong>Email:</strong> harsha@iiith.ac.in
+                                            <strong>Email:</strong> {studentData?.email || 'N/A'}
                                         </span>
                                     </div>
                                 </div>
@@ -401,7 +483,7 @@ const ProfilePage = () => {
                     <div className={`w-2/3 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} p-8 rounded-2xl shadow-2xl border backdrop-blur-sm`}>
                         <div className="mb-8">
                             <h2 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-blue-700'} mb-2 flex items-center gap-3`}>
-                                Welcome Back, Harsha!
+                                Welcome Back, {studentData?.name?.split(' ')[0] || 'Student'}!
                                 <div className="animate-bounce">👋</div>
                             </h2>
                             <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>

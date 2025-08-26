@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import BottomNav from "../components/BottomNav";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
+import useAuthStore from "../store/authStore";
 import {
     ChevronRight,
     User,
@@ -120,6 +121,9 @@ const ProfilePage = () => {
     const [profileImage, setProfileImage] = useState(null);
     const [currentPage, setCurrentPage] = useState('profile');
 
+    const navigate = useNavigate();
+    const logout = useAuthStore(state => state.logout);
+
     const handleImageUpload = (event) => {
         const file = event.target.files[0];
         if (file) {
@@ -129,7 +133,7 @@ const ProfilePage = () => {
         }
     };
 
-    const handleOptionClick = (option) => {
+    const handleOptionClick = async (option) => {
         if (option.label === "Dark Mode") {
             setIsDarkMode(!isDarkMode);
         } else if (option.label === "Notifications") {
@@ -137,7 +141,11 @@ const ProfilePage = () => {
         } else if (option.label === "Edit Profile") {
             setCurrentPage('edit-profile');
         } else if (option.label === "Logout") {
-            alert("Logout functionality would be implemented here!");
+            try {
+                await logout();
+            } finally {
+                navigate('/');
+            }
         }
     };
 

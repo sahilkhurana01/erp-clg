@@ -1,23 +1,3 @@
-const jwt = require('jsonwebtoken');
-
-function roleAuth(requiredRole) {
-  return (req, res, next) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ success: false, message: 'No token provided' });
-    }
-    const token = authHeader.split(' ')[1];
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-      if (decoded.role !== requiredRole) {
-        return res.status(403).json({ success: false, message: 'Forbidden: Incorrect role' });
-      }
-      req.user = decoded;
-      next();
-    } catch (err) {
-      return res.status(401).json({ success: false, message: 'Invalid token' });
-    }
-  };
-}
-
-module.exports = roleAuth;
+// This file can re-export helpers from auth.js for compatibility
+const { requireAdmin, requireTeacher, requireStudent, requireTeacherOrAdmin } = require('./auth');
+module.exports = { requireAdmin, requireTeacher, requireStudent, requireTeacherOrAdmin };

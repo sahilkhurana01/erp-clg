@@ -7,6 +7,7 @@ import Profile from './Pages/Profile';
 import Marks from './Pages/Marks';
 import Notifications from './Pages/Notifications';
 import EditProfile from './Pages/EditProfile';
+import PayRoll from './Pages/PayRoll';
 
 
 function App() {
@@ -34,6 +35,10 @@ function App() {
     {
       path: "/student/editprofile",
       element: <EditProfile />
+    },
+    {
+      path: "/student/payroll",
+      element: <PayRoll />
     }
   ])
   return (

@@ -1,21 +1,22 @@
+"use client";
 import FormModal from "@/components/FormModal";
 import Pagination from "@/components/Pagination";
 import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
-import { role, teachersData } from "@/lib/data";
+import { role } from "@/lib/data";
+import { useEffect, useState } from "react";
+import { teachersAPI } from "../../../../api";
 import Image from "next/image";
 import Link from "next/link";
 
 type Teacher = {
-  id: number;
-  teacherId: string;
+  _id: string;
   name: string;
   email?: string;
-  photo: string;
-  phone: string;
-  subjects: string[];
-  classes: string[];
-  address: string;
+  employeeId?: string;
+  subject?: string;
+  phone?: string;
+  address?: string;
 };
 
 const columns = [
@@ -23,31 +24,8 @@ const columns = [
     header: "Info",
     accessor: "info",
   },
-  {
-    header: "Teacher ID",
-    accessor: "teacherId",
-    className: "hidden md:table-cell",
-  },
-  {
-    header: "Subjects",
-    accessor: "subjects",
-    className: "hidden md:table-cell",
-  },
-  {
-    header: "Classes",
-    accessor: "classes",
-    className: "hidden md:table-cell",
-  },
-  {
-    header: "Phone",
-    accessor: "phone",
-    className: "hidden lg:table-cell",
-  },
-  {
-    header: "Address",
-    accessor: "address",
-    className: "hidden lg:table-cell",
-  },
+  { header: "Email", accessor: "email", className: "hidden md:table-cell" },
+  { header: "Subject", accessor: "subject", className: "hidden md:table-cell" },
   {
     header: "Actions",
     accessor: "action",
@@ -55,32 +33,38 @@ const columns = [
 ];
 
 const TeacherListPage = () => {
+  const [items, setItems] = useState<Teacher[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await teachersAPI.getAll(1, 100);
+        const data = (res?.data || res) as any[];
+        if (mounted) setItems(data);
+      } catch (e) {
+        console.error("Failed to load teachers", e);
+      }
+    })();
+    return () => { mounted = false };
+  }, []);
+
   const renderRow = (item: Teacher) => (
     <tr
-      key={item.id}
+      key={item._id}
       className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-lamaPurpleLight"
     >
       <td className="flex items-center gap-4 p-4">
-        <Image
-          src={item.photo}
-          alt=""
-          width={40}
-          height={40}
-          className="md:hidden xl:block w-10 h-10 rounded-full object-cover"
-        />
         <div className="flex flex-col">
           <h3 className="font-semibold">{item.name}</h3>
           <p className="text-xs text-gray-500">{item?.email}</p>
         </div>
       </td>
-      <td className="hidden md:table-cell">{item.teacherId}</td>
-      <td className="hidden md:table-cell">{item.subjects.join(",")}</td>
-      <td className="hidden md:table-cell">{item.classes.join(",")}</td>
-      <td className="hidden md:table-cell">{item.phone}</td>
-      <td className="hidden md:table-cell">{item.address}</td>
+      <td className="hidden md:table-cell">{item.email}</td>
+      <td className="hidden md:table-cell">{item.subject}</td>
       <td>
         <div className="flex items-center gap-2">
-          <Link href={`/list/teachers/${item.id}`}>
+          <Link href={`/list/teachers/${item._id}`}>
             <button className="w-7 h-7 flex items-center justify-center rounded-full bg-lamaSky">
               <Image src="/view.png" alt="" width={16} height={16} />
             </button>
@@ -89,7 +73,7 @@ const TeacherListPage = () => {
             // <button className="w-7 h-7 flex items-center justify-center rounded-full bg-lamaPurple">
             //   <Image src="/delete.png" alt="" width={16} height={16} />
             // </button>
-            <FormModal table="teacher" type="delete" id={item.id}/>
+            <FormModal table="teacher" type="delete" id={item._id}/>
           )}
         </div>
       </td>
@@ -120,7 +104,7 @@ const TeacherListPage = () => {
         </div>
       </div>
       {/* LIST */}
-      <Table columns={columns} renderRow={renderRow} data={teachersData} />
+      <Table columns={columns} renderRow={renderRow} data={items} />
       {/* PAGINATION */}
       <Pagination />
     </div>

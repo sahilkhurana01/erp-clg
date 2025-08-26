@@ -9,19 +9,18 @@ import AdminLogin from "./Pages/AdminLogin";
 import AdminDashboardApp from "./Pages/Admin-Dashboard/src/index";
 import StudentDashboard from "./Pages/Student-Dashboard/src/Pages/Home";
 import TeacherDashboard from "./Pages/Teacher/src/Pages/Home";
-import "./App.css";
 import Home from "./Pages/Student-Dashboard/src/Pages/Home";
 import Profile from "./Pages/Student-Dashboard/src/Pages/Profile";
 import Marks from "./Pages/Student-Dashboard/src/Pages/Marks";
 import Notifications from "./Pages/Student-Dashboard/src/Pages/Notifications";
 import EditProfile from "./Pages/Student-Dashboard/src/Pages/EditProfile";
+import PayRoll from "./Pages/Student-Dashboard/src/Pages/PayRoll";
 import TimeTable from "./Pages/Teacher/src/Pages/TimeTable";
 import Students from "./Pages/Teacher/src/Pages/Students";
-import TeachersMarks from "./Pages/Teacher/src/Pages/Marks" ;
+import TeachersMarks from "./Pages/Teacher/src/Pages/Marks";
 import Attendance from "./Pages/Teacher/src/Pages/Attendance";
 import Payroll from "./Pages/Teacher/src/Pages/Payroll";
 import TeachersProfile from "./Pages/Teacher/src/Pages/Profile";
-
 
 // Create the modern route configuration
 const router = createBrowserRouter([
@@ -72,6 +71,10 @@ const router = createBrowserRouter([
   {
     path: "/student/editprofile",
     element: <EditProfile />
+  },
+  {
+    path: "/student/payroll",
+    element: <PayRoll />
   },
   {
     path: "/teacher/timetable",

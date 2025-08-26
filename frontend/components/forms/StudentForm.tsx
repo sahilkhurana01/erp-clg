@@ -5,12 +5,11 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import InputField from "../InputField";
 import Image from "next/image";
+import { useEffect, useState } from "react";
+import { classesAPI, studentsAPI } from "../../api";
 
 const schema = z.object({
-  username: z
-    .string()
-    .min(3, { message: "Username must be at least 3 characters long!" })
-    .max(20, { message: "Username must be at most 20 characters long!" }),
+  username: z.string().min(3, { message: "Username must be at least 3 characters long!" }).max(20, { message: "Username must be at most 20 characters long!" }),
   email: z.string().email({ message: "Invalid email address!" }),
   password: z
     .string()
@@ -20,9 +19,12 @@ const schema = z.object({
   phone: z.string().min(1, { message: "Phone is required!" }),
   address: z.string().min(1, { message: "Address is required!" }),
   bloodType: z.string().min(1, { message: "Blood Type is required!" }),
-  birthday: z.date({ message: "Birthday is required!" }),
+  birthday: z.any(),
   sex: z.enum(["male", "female"], { message: "Sex is required!" }),
   img: z.instanceof(File, { message: "Image is required" }),
+  rollNo: z.string().min(1, { message: "Roll No is required!" }),
+  section: z.string().min(1, { message: "Section is required!" }),
+  classId: z.string().min(1, { message: "Class is required!" })
 });
 
 type Inputs = z.infer<typeof schema>;
@@ -34,6 +36,7 @@ const StudentForm = ({
   type: "create" | "update";
   data?: any;
 }) => {
+  const [classes, setClasses] = useState<Array<{ _id: string; name: string; section: string }>>([]);
   const {
     register,
     handleSubmit,
@@ -42,8 +45,39 @@ const StudentForm = ({
     resolver: zodResolver(schema),
   });
 
-  const onSubmit = handleSubmit((data) => {
-    console.log(data);
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await classesAPI.getAll();
+        setClasses((res?.data || res) as any);
+      } catch (e) {
+        console.error("Failed to load classes", e);
+      }
+    })();
+  }, []);
+
+  const onSubmit = handleSubmit(async (form) => {
+    const name = `${form.firstName} ${form.lastName}`.trim();
+    try {
+      await studentsAPI.create({
+        name,
+        email: form.email,
+        password: form.password,
+        rollNo: form.rollNo,
+        classId: form.classId,
+        section: form.section,
+        phone: form.phone,
+        address: form.address,
+        bloodGroup: form.bloodType,
+        parentName: undefined,
+        parentPhone: undefined,
+      } as any);
+      // Optionally refresh or close modal
+      window.location.reload();
+    } catch (e) {
+      console.error("Create student failed", e);
+      alert((e as any)?.message || "Failed to create student");
+    }
   });
 
   return (
@@ -80,6 +114,32 @@ const StudentForm = ({
         Personal Information
       </span>
       <div className="flex justify-between flex-wrap gap-4">
+        <div className="flex flex-col gap-2 w-full md:w-1/4">
+          <label className="text-xs text-gray-500">Class</label>
+          <select className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full" {...register("classId")} defaultValue={data?.classId}>
+            <option value="">Select Class</option>
+            {classes.map((c) => (
+              <option key={c._id} value={c._id}>{c.name} - {c.section}</option>
+            ))}
+          </select>
+          {errors.classId?.message && (
+            <p className="text-xs text-red-400">{errors.classId.message.toString()}</p>
+          )}
+        </div>
+        <InputField
+          label="Section"
+          name="section"
+          defaultValue={data?.section}
+          register={register}
+          error={errors.section}
+        />
+        <InputField
+          label="Roll No"
+          name="rollNo"
+          defaultValue={data?.rollNo}
+          register={register}
+          error={errors.rollNo}
+        />
         <InputField
           label="First Name"
           name="firstName"

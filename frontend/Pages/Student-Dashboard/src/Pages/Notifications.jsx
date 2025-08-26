@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Bell, AlertCircle, CalendarCheck, MessageCircle, CheckCircle2, X, Eye, EyeOff, Zap, TrendingUp, BookOpen, Users, Coffee, Clock, Search, Filter, MoreVertical, Archive, Star, Menu } from "lucide-react";
 import BottomNav from "../components/BottomNav";
+import { studentsAPI, announcementsAPI } from "../../../../api";
 
 const notifications = [
     {
@@ -110,12 +111,68 @@ const categories = [
 
 const Notifications = () => {
     const [selectedCategory, setSelectedCategory] = useState("all");
-    const [notificationList, setNotificationList] = useState(notifications);
+    const [notificationList, setNotificationList] = useState([]);
     const [showOnlyUnread, setShowOnlyUnread] = useState(false);
     const [animatingItems, setAnimatingItems] = useState(new Set());
     const [searchTerm, setSearchTerm] = useState("");
     const [showFilters, setShowFilters] = useState(false);
     const [showMobileMenu, setShowMobileMenu] = useState(false);
+    
+    // Real data states
+    const [studentData, setStudentData] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchNotifications = async () => {
+            try {
+                setLoading(true);
+                const user = JSON.parse(localStorage.getItem('user') || '{}');
+                if (user.id) {
+                    const student = await studentsAPI.getById(user.id);
+                    setStudentData(student);
+                    
+                    // Fetch real announcements as notifications
+                    const announcements = await announcementsAPI.getAll();
+                    const realNotifications = (announcements.data || announcements || []).map((announcement, index) => ({
+                        id: announcement._id || index + 1,
+                        type: announcement.type || "Announcement",
+                        message: announcement.title || "New announcement",
+                        detail: announcement.content || "Check the details",
+                        icon: announcement.type === "exam" ? CalendarCheck : 
+                              announcement.type === "assignment" ? AlertCircle :
+                              announcement.type === "event" ? Zap : Bell,
+                        time: announcement.createdAt ? new Date(announcement.createdAt).toLocaleDateString() : "Recently",
+                        priority: announcement.priority || "medium",
+                        category: announcement.type || "academic",
+                        isRead: false,
+                        isStarred: false,
+                        color: announcement.type === "exam" ? "text-red-600" : 
+                               announcement.type === "assignment" ? "text-orange-600" :
+                               announcement.type === "event" ? "text-yellow-600" : "text-blue-600",
+                        bg: announcement.type === "exam" ? "bg-red-50" : 
+                            announcement.type === "assignment" ? "bg-orange-50" :
+                            announcement.type === "event" ? "bg-yellow-50" : "bg-blue-50",
+                        border: announcement.type === "exam" ? "border-red-200" : 
+                                announcement.type === "assignment" ? "border-orange-200" :
+                                announcement.type === "event" ? "border-yellow-200" : "border-blue-200",
+                        emoji: announcement.type === "exam" ? "🔥" : 
+                               announcement.type === "assignment" ? "⚡" :
+                               announcement.type === "event" ? "🎉" : "📢"
+                    }));
+                    
+                    setNotificationList(realNotifications);
+                }
+            } catch (error) {
+                console.error('Error fetching notifications:', error);
+                // Fallback to mock data if API fails
+                setNotificationList(notifications);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchNotifications();
+    }, []);
 
     const filteredNotifications = notificationList.filter(notification => {
         const categoryMatch = selectedCategory === "all" || notification.category === selectedCategory;
@@ -177,6 +234,14 @@ const Notifications = () => {
             default: return "bg-gray-100 text-gray-800 border-gray-200";
         }
     };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">

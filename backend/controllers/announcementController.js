@@ -1,39 +1,34 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const { connectMongo } = require('../db');
+const Announcement = require('../models/Announcement');
+const User = require('../models/User');
 
 // Get all announcements
 exports.getAllAnnouncements = async (req, res) => {
   try {
+    await connectMongo();
     const { page = 1, limit = 10 } = req.query;
-    const skip = (page - 1) * limit;
-    
-    const announcements = await prisma.announcement.findMany({
-      skip: parseInt(skip),
-      take: parseInt(limit),
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
-    
-    const total = await prisma.announcement.count();
-    
-    res.json({
-      success: true,
-      data: announcements,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total,
-        pages: Math.ceil(total / limit)
-      }
-    });
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const [items, total] = await Promise.all([
+      Announcement.find({})
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean(),
+      Announcement.countDocuments({})
+    ]);
+
+    // Optionally enrich with author fields
+    const authorIds = Array.from(new Set(items.map(a => String(a.authorId))));
+    const authors = await User.find({ _id: { $in: authorIds } }).select('name email').lean();
+    const idToAuthor = new Map(authors.map(a => [String(a._id), { id: String(a._id), name: a.name, email: a.email }]));
+    const data = items.map(a => ({
+      ...a,
+      id: String(a._id),
+      author: idToAuthor.get(String(a.authorId)) || null,
+    }));
+
+    res.json({ success: true, data, pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / parseInt(limit)) } });
   } catch (err) {
     res.status(500).json({ 
       success: false,
@@ -45,31 +40,12 @@ exports.getAllAnnouncements = async (req, res) => {
 // Get announcement by ID
 exports.getAnnouncementById = async (req, res) => {
   try {
+    await connectMongo();
     const { id } = req.params;
-    const announcement = await prisma.announcement.findUnique({ 
-      where: { id: id },
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        }
-      }
-    });
-    
-    if (!announcement) {
-      return res.status(404).json({ 
-        success: false,
-        error: 'Announcement not found' 
-      });
-    }
-    
-    res.json({
-      success: true,
-      data: announcement
-    });
+    const a = await Announcement.findById(id).lean();
+    if (!a) return res.status(404).json({ success: false, error: 'Announcement not found' });
+    const author = await User.findById(a.authorId).select('name email').lean();
+    res.json({ success: true, data: { ...a, id: String(a._id), author: author ? { id: String(author._id), name: author.name, email: author.email } : null } });
   } catch (err) {
     res.status(500).json({ 
       success: false,
@@ -81,28 +57,15 @@ exports.getAnnouncementById = async (req, res) => {
 // Create new announcement
 exports.createAnnouncement = async (req, res) => {
   try {
-    const announcementData = {
-      ...req.body,
-      authorId: req.user.id
-    };
-    
-    const announcement = await prisma.announcement.create({ 
-      data: announcementData,
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        }
-      }
+    await connectMongo();
+    const a = await Announcement.create({
+      title: req.body.title,
+      content: req.body.content,
+      isActive: req.body.isActive !== undefined ? req.body.isActive : true,
+      priority: req.body.priority || 'low',
+      authorId: req.user.id,
     });
-    
-    res.status(201).json({
-      success: true,
-      data: announcement
-    });
+    res.status(201).json({ success: true, data: { ...a.toObject(), id: String(a._id) } });
   } catch (err) {
     res.status(400).json({ 
       success: false,
@@ -114,25 +77,11 @@ exports.createAnnouncement = async (req, res) => {
 // Update announcement
 exports.updateAnnouncement = async (req, res) => {
   try {
+    await connectMongo();
     const { id } = req.params;
-    const announcement = await prisma.announcement.update({ 
-      where: { id: id }, 
-      data: req.body,
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        }
-      }
-    });
-    
-    res.json({
-      success: true,
-      data: announcement
-    });
+    const a = await Announcement.findByIdAndUpdate(id, req.body, { new: true }).lean();
+    if (!a) return res.status(404).json({ success: false, error: 'Announcement not found' });
+    res.json({ success: true, data: { ...a, id: String(a._id) } });
   } catch (err) {
     res.status(400).json({ 
       success: false,
@@ -144,12 +93,10 @@ exports.updateAnnouncement = async (req, res) => {
 // Delete announcement
 exports.deleteAnnouncement = async (req, res) => {
   try {
+    await connectMongo();
     const { id } = req.params;
-    await prisma.announcement.delete({ where: { id: id } });
-    res.json({ 
-      success: true,
-      message: 'Announcement deleted successfully' 
-    });
+    await Announcement.deleteOne({ _id: id });
+    res.json({ success: true, message: 'Announcement deleted successfully' });
   } catch (err) {
     res.status(400).json({ 
       success: false,
@@ -161,38 +108,13 @@ exports.deleteAnnouncement = async (req, res) => {
 // Toggle announcement status
 exports.toggleAnnouncementStatus = async (req, res) => {
   try {
+    await connectMongo();
     const { id } = req.params;
-    
-    const announcement = await prisma.announcement.findUnique({
-      where: { id: id }
-    });
-    
-    if (!announcement) {
-      return res.status(404).json({
-        success: false,
-        error: 'Announcement not found'
-      });
-    }
-    
-    const updatedAnnouncement = await prisma.announcement.update({
-      where: { id: id },
-      data: { isActive: !announcement.isActive },
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        }
-      }
-    });
-    
-    res.json({
-      success: true,
-      data: updatedAnnouncement,
-      message: `Announcement ${updatedAnnouncement.isActive ? 'activated' : 'deactivated'} successfully`
-    });
+    const a = await Announcement.findById(id);
+    if (!a) return res.status(404).json({ success: false, error: 'Announcement not found' });
+    a.isActive = !a.isActive;
+    await a.save();
+    res.json({ success: true, data: { ...a.toObject(), id: String(a._id) }, message: `Announcement ${a.isActive ? 'activated' : 'deactivated'} successfully` });
   } catch (err) {
     res.status(400).json({ 
       success: false,

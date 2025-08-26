@@ -1,178 +1,106 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Shield, GraduationCap, Building2 } from 'lucide-react';
-import useAuthStore from './store/authStore';
+import { GraduationCap, User, Shield, ArrowRight } from 'lucide-react';
 
 const RoleSelectionPage = () => {
-    const [selectedRole, setSelectedRole] = useState(null);
-    const [isHovered, setIsHovered] = useState(null);
-    const navigate = useNavigate();
-    const { isAuthenticated, user } = useAuthStore();
+  const navigate = useNavigate();
 
-    // Check if user is already authenticated and redirect to appropriate dashboard
-    useEffect(() => {
-        if (isAuthenticated && user) {
-            switch (user.role) {
-                case 'admin':
-                    navigate('/admin/dashboard');
-                    break;
-                case 'teacher':
-                    navigate('/teacher/dashboard');
-                    break;
-                case 'student':
-                    navigate('/student/dashboard');
-                    break;
-                default:
-                    break;
-            }
-        }
-    }, [isAuthenticated, user, navigate]);
+  const roles = [
+    {
+      id: 'student',
+      title: 'Student Portal',
+      description: 'Access your academic dashboard, view grades, check attendance, and manage your educational journey',
+      icon: GraduationCap,
+      color: 'bg-gradient-to-r from-blue-500 to-cyan-500',
+      hoverColor: 'hover:from-blue-600 hover:to-cyan-600',
+      route: '/student'
+    },
+    {
+      id: 'teacher',
+      title: 'Faculty Portal',
+      description: 'Manage your classes, grade assignments, track student progress, and access teaching resources',
+      icon: User,
+      color: 'bg-gradient-to-r from-emerald-500 to-teal-500',
+      hoverColor: 'hover:from-emerald-600 hover:to-teal-600',
+      route: '/teacher'
+    },
+    {
+      id: 'admin',
+      title: 'Administrative Portal',
+      description: 'Oversee institutional operations, manage users, monitor system performance, and generate reports',
+      icon: Shield,
+      color: 'bg-gradient-to-r from-violet-500 to-purple-500',
+      hoverColor: 'hover:from-violet-600 hover:to-purple-600',
+      route: '/admin'
+    }
+  ];
 
-    const roles = [
-        {
-            id: 'admin',
-            title: 'Admin',
-            description: 'Manage system and users',
-            icon: Shield
-        },
-        {
-            id: 'teacher',
-            title: 'Teacher',
-            description: 'Create and manage courses',
-            icon: User
-        },
-        {
-            id: 'student',
-            title: 'Student',
-            description: 'Access courses and materials',
-            icon: GraduationCap
-        }
-    ];
-
-    const handleRoleSelect = (roleId) => {
-        setSelectedRole(roleId);
-    };
-
-    const handleContinue = () => {
-        if (!selectedRole) return;
-
-        switch (selectedRole) {
-            case 'admin':
-                navigate('/admin');
-                break;
-            case 'teacher':
-                navigate('/teacher');
-                break;
-            case 'student':
-                navigate('/student');
-                break;
-            default:
-                break;
-        }
-    };
-
-    return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
-            <div className="w-full max-w-4xl">
-                {/* Header */}
-                <div className="text-center mb-8 md:mb-12">
-                    <div className="flex justify-center items-center mb-4 md:mb-6">
-                        <div className="bg-white rounded-full p-3 md:p-4 shadow-md">
-                            <Building2 className="h-6 w-6 md:h-8 md:w-8 text-slate-600" />
-                        </div>
-                    </div>
-                    <h1 className="text-2xl md:text-4xl font-light text-slate-800 mb-2 md:mb-4">
-                        Choose Your Role
-                    </h1>
-                    <p className="text-sm md:text-base text-slate-600 max-w-md mx-auto">
-                        Select how you'd like to access the platform
-                    </p>
-                </div>
-
-                {/* Role Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 mb-8 md:mb-12">
-                    {roles.map((role) => {
-                        const IconComponent = role.icon;
-                        const isSelected = selectedRole === role.id;
-                        const isHover = isHovered === role.id;
-
-                        return (
-                            <div
-                                key={role.id}
-                                className={`relative bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-100 transition-all duration-300 cursor-pointer group ${
-                                    isSelected 
-                                        ? 'ring-2 ring-blue-500 shadow-lg transform scale-105 border-blue-200' 
-                                        : 'hover:shadow-lg hover:border-gray-200'
-                                } ${isHover ? 'transform -translate-y-1' : ''}`}
-                                onMouseEnter={() => setIsHovered(role.id)}
-                                onMouseLeave={() => setIsHovered(null)}
-                                onClick={() => handleRoleSelect(role.id)}
-                            >
-                                <div className="p-6 md:p-8 text-center">
-                                    <div className="flex justify-center mb-4 md:mb-6">
-                                        <div
-                                            className={`p-3 md:p-4 rounded-full transition-all duration-300 ${
-                                                isSelected 
-                                                    ? 'bg-blue-100' 
-                                                    : 'bg-slate-100 group-hover:bg-slate-200'
-                                            }`}
-                                        >
-                                            <IconComponent
-                                                className={`h-6 w-6 md:h-8 md:w-8 transition-colors duration-300 ${
-                                                    isSelected 
-                                                        ? 'text-blue-600' 
-                                                        : 'text-slate-600'
-                                                }`}
-                                            />
-                                        </div>
-                                    </div>
-                                    <h3 className="text-lg md:text-xl font-semibold text-slate-800 mb-2 md:mb-3">
-                                        {role.title}
-                                    </h3>
-                                    <p className="text-slate-500 text-sm md:text-base leading-relaxed">
-                                        {role.description}
-                                    </p>
-                                </div>
-
-                                {/* Selection Indicator */}
-                                {isSelected && (
-                                    <div className="absolute top-4 right-4 bg-blue-500 text-white rounded-full p-2 shadow-lg z-10">
-                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                            <path
-                                                fillRule="evenodd"
-                                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                                clipRule="evenodd"
-                                            />
-                                        </svg>
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
-                </div>
-
-                {/* Continue Button */}
-                <div className="text-center mb-6 md:mb-8">
-                    <button
-                        onClick={handleContinue}
-                        disabled={!selectedRole}
-                        className={`px-8 md:px-12 py-3 md:py-4 rounded-xl font-medium text-base md:text-lg transition-all duration-300 ${
-                            selectedRole
-                                ? 'bg-blue-500 text-white shadow-md hover:bg-blue-600 hover:shadow-lg transform hover:-translate-y-0.5'
-                                : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                        }`}
-                    >
-                        Continue
-                    </button>
-                </div>
-
-                {/* Footer */}
-                <div className="text-center text-slate-400 text-xs md:text-sm">
-                    <p>Need help? Contact support</p>
-                </div>
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-4xl">
+        {/* Header */}
+        <div className="text-center mb-6 md:mb-8">
+          <div className="flex justify-center items-center mb-3 md:mb-4">
+            <div className="bg-white rounded-full p-3 md:p-4 shadow-md">
+              <Shield className="h-6 w-6 md:h-8 md:w-8 text-slate-600" />
             </div>
+          </div>
+          <h1 className="text-2xl md:text-3xl font-light text-slate-800 mb-2">
+            Educational Resource Platform
+          </h1>
+          <p className="text-sm md:text-base text-slate-600">
+            Welcome to our integrated learning management system. 
+            Select your role to access personalized features and tools.
+          </p>
         </div>
-    );
+
+        {/* Role Selection Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 md:mb-8">
+          {roles.map((role) => {
+            const IconComponent = role.icon;
+            return (
+              <div
+                key={role.id}
+                className="group cursor-pointer transform transition-all duration-300 hover:scale-105"
+                onClick={() => navigate(role.route)}
+              >
+                <div className="bg-white rounded-2xl shadow-md p-6 md:p-8 h-full border border-slate-100 hover:shadow-lg transition-all duration-300">
+                  {/* Icon */}
+                  <div className={`w-16 h-16 md:w-20 md:h-20 ${role.color} rounded-full flex items-center justify-center mx-auto mb-4 md:mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
+                    <IconComponent className="w-8 h-8 md:w-10 md:h-10 text-white" />
+                  </div>
+
+                  {/* Content */}
+                  <h3 className="text-xl md:text-2xl font-light text-slate-800 mb-3 md:mb-4">
+                    {role.title}
+                  </h3>
+                  <p className="text-sm md:text-base text-slate-600 mb-4 md:mb-6 leading-relaxed">
+                    {role.description}
+                  </p>
+
+                  {/* Action Button */}
+                  <div className={`inline-flex items-center gap-2 px-4 md:px-6 py-2 md:py-3 ${role.color} ${role.hoverColor} text-white rounded-xl font-medium transition-all duration-300 shadow-md hover:shadow-lg`}>
+                    <span className="text-sm md:text-base">Access Portal</span>
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Footer */}
+        <div className="text-center text-slate-500">
+          <p className="text-sm">
+            Need assistance? Contact our support team
+          </p>
+          <p className="text-xs mt-2">
+            © 2024 Educational Resource Platform. All rights reserved.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default RoleSelectionPage;

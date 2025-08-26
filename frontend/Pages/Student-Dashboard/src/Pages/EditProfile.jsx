@@ -1,25 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Camera, Calendar, Mail, Phone, User, MapPin, Save, Eye, EyeOff, Bell, Shield, Palette, Moon, Sun, Globe, Settings, ChevronDown, Check, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { studentsAPI } from '../../../../api';
 
 
 const EditProfile = () => {
     const navigate = useNavigate();
     const [profileData, setProfileData] = useState({
-        fullName: 'John Doe',
-        nickName: 'Johnny',
-        dateOfBirth: '1995-06-15',
-        email: 'john.doe@example.com',
-        phone: '+91 987-848-1225',
+        fullName: '',
+        nickName: '',
+        dateOfBirth: '',
+        email: '',
+        phone: '',
         gender: 'Male',
         role: 'Student',
-        bio: 'Computer Science student passionate about web development and AI.',
-        address: 'Mumbai, Maharashtra',
-        emergencyContact: '+91 987-654-3210',
+        bio: '',
+        address: '',
+        emergencyContact: '',
         bloodGroup: 'O+',
-        semester: '6th Semester',
-        course: 'B.Tech Computer Science'
+        semester: '',
+        course: ''
     });
+    
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
 
     const [showPassword, setShowPassword] = useState(false);
     const [activeTab, setActiveTab] = useState('personal');
@@ -35,6 +39,41 @@ const EditProfile = () => {
     ];
 
     const [selectedCountry, setSelectedCountry] = useState(countries[0]);
+
+    useEffect(() => {
+        const fetchStudentData = async () => {
+            try {
+                setLoading(true);
+                const user = JSON.parse(localStorage.getItem('user') || '{}');
+                if (user.id) {
+                    const student = await studentsAPI.getById(user.id);
+                    if (student) {
+                        setProfileData({
+                            fullName: student.name || '',
+                            nickName: student.nickName || '',
+                            dateOfBirth: student.dateOfBirth || '',
+                            email: student.email || '',
+                            phone: student.phone || '',
+                            gender: student.gender || 'Male',
+                            role: 'Student',
+                            bio: student.bio || '',
+                            address: student.address || '',
+                            emergencyContact: student.emergencyContact || '',
+                            bloodGroup: student.bloodGroup || 'O+',
+                            semester: student.semester || '',
+                            course: student.classId || ''
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching student data:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchStudentData();
+    }, []);
 
     const handleInputChange = (field, value) => {
         setProfileData(prev => ({
@@ -54,10 +93,38 @@ const EditProfile = () => {
         }
     };
 
-    const handleSave = () => {
-        setIsEditing(false);
-        setShowSuccessMessage(true);
-        setTimeout(() => setShowSuccessMessage(false), 3000);
+    const handleSave = async () => {
+        try {
+            setSaving(true);
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            if (user.id) {
+                // Update student data
+                await studentsAPI.update(user.id, {
+                    name: profileData.fullName,
+                    nickName: profileData.nickName,
+                    dateOfBirth: profileData.dateOfBirth,
+                    email: profileData.email,
+                    phone: profileData.phone,
+                    gender: profileData.gender,
+                    bio: profileData.bio,
+                    address: profileData.address,
+                    emergencyContact: profileData.emergencyContact,
+                    bloodGroup: profileData.bloodGroup,
+                    semester: profileData.semester
+                });
+                
+                setIsEditing(false);
+                setShowSuccessMessage(true);
+                setTimeout(() => setShowSuccessMessage(false), 3000);
+            }
+        } catch (error) {
+            console.error('Error saving profile:', error);
+            // Show error message
+            setShowSuccessMessage(true);
+            setTimeout(() => setShowSuccessMessage(false), 3000);
+        } finally {
+            setSaving(false);
+        }
     };
 
     const tabs = [
@@ -65,6 +132,14 @@ const EditProfile = () => {
         { id: 'academic', name: 'Academic', icon: Calendar },
         { id: 'settings', name: 'Settings', icon: Settings }
     ];
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
@@ -97,10 +172,19 @@ const EditProfile = () => {
                     </div>
                     <button
                         onClick={handleSave}
-                        className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                        disabled={saving}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
+                            saving 
+                                ? 'bg-gray-400 text-white cursor-not-allowed' 
+                                : 'bg-blue-600 text-white hover:bg-blue-700'
+                        }`}
                     >
-                        <Save className="w-4 h-4" />
-                        Save
+                        {saving ? (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        ) : (
+                            <Save className="w-4 h-4" />
+                        )}
+                        {saving ? 'Saving...' : 'Save'}
                     </button>
                 </div>
             </div>
